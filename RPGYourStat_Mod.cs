@@ -22,7 +22,6 @@ namespace RPGYourStat
             Listing_Standard listing = new Listing_Standard();
             listing.Begin(inRect);
 
-            // Créer une case à cocher pour le mode de débogage
             listing.CheckboxLabeled("Activer le mode de débogage", ref settings.debugMode, "Affiche les messages de débogage dans la console.");
 
             listing.End();
