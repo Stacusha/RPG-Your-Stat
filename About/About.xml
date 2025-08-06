@@ -2,10 +2,14 @@
 <ModMetaData>
   <name>RPG Your Stat</name>
   <author>Stacusha</author>
+  <packageId>Stacusha.RPGYourStat</packageId>
   <description>Un mod qui ajoute un système de statistiques de type RPG.</description>
   <supportedVersions>
     <li>1.4</li>
     <li>1.5</li>
-    <li>1.6</li>
   </supportedVersions>
+  <modDependencies>
+  </modDependencies>
+  <loadAfter>
+  </loadAfter>
 </ModMetaData>
