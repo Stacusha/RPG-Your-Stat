@@ -9,6 +9,7 @@ namespace RPGYourStat
 
         public RPGYourStat_Mod(ModContentPack content) : base(content)
         {
+            Log.Message("Le mod RPG Your Stat a été chargé avec succès !");
             settings = GetSettings<RPGYourStat_Settings>();
         }
 
