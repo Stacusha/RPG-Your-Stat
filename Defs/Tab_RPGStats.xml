@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<Defs>
+    <MainButtonDef>
+        <defName>RPGStats</defName>
+        <label>Stats RPG</label>
+        <description>Affiche les statistiques des colons et animaux.</description>
+        <tabWindowClass>RPGYourStat.MainTabWindow_RPGStats</tabWindowClass>
+        <order>15</order>
+        <!-- <iconPath>UI/Icons/Tab/Stats</iconPath> -->
+    </MainButtonDef>
+</Defs>
