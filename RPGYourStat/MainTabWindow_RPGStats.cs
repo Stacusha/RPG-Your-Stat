@@ -9,9 +9,9 @@ namespace RPGYourStat
     public class MainTabWindow_RPGStats : MainTabWindow
     {
         private Vector2 scrollPosition = Vector2.zero;
-        private const float RowHeight = 30f;
-        private const float ColumnWidth = 120f;
-        private const float SeparatorHeight = 20f;
+        private const float RowHeight = 25f;
+        private const float StatColumnWidth = 80f;
+        private const float NameColumnWidth = 150f;
 
         public MainTabWindow_RPGStats()
         {
@@ -23,7 +23,7 @@ namespace RPGYourStat
             this.draggable = true;
         }
 
-        public override Vector2 RequestedTabSize => new Vector2(800f, 600f);
+        public override Vector2 RequestedTabSize => new Vector2(1000f, 700f);
 
         public override void DoWindowContents(Rect inRect)
         {
@@ -34,6 +34,17 @@ namespace RPGYourStat
             Text.Font = GameFont.Medium;
             Widgets.Label(headerRect, "Statistiques RPG des Colons et Animaux");
             Text.Font = GameFont.Small;
+
+            // Bouton de test (temporaire)
+            Rect testButtonRect = new Rect(inRect.x + inRect.width - 150f, inRect.y, 140f, 30f);
+            if (Widgets.ButtonText(testButtonRect, "Test XP"))
+            {
+                foreach (var pawn in GetColonists())
+                {
+                    var comp = pawn.GetComp<CompRPGStats>();
+                    comp?.GiveTestExperience();
+                }
+            }
 
             // Zone de contenu avec scroll
             Rect contentRect = new Rect(inRect.x, inRect.y + 50f, inRect.width, inRect.height - 50f);
@@ -97,29 +108,26 @@ namespace RPGYourStat
 
         private float DrawColumnHeaders(float y, float width)
         {
-            Rect headerRect = new Rect(0f, y, width, RowHeight);
-            
             Text.Font = GameFont.Small;
             GUI.color = Color.yellow;
             
+            float currentX = 10f;
+            
             // Nom
-            Rect nameRect = new Rect(10f, y, ColumnWidth * 1.5f, RowHeight);
+            Rect nameRect = new Rect(currentX, y, NameColumnWidth, RowHeight);
             Widgets.Label(nameRect, "Nom");
+            currentX += NameColumnWidth + 10f;
             
-            // Niveau
-            Rect levelRect = new Rect(ColumnWidth * 1.5f + 20f, y, ColumnWidth, RowHeight);
-            Widgets.Label(levelRect, "Niveau");
-            
-            // XP
-            Rect xpRect = new Rect(ColumnWidth * 2.5f + 30f, y, ColumnWidth, RowHeight);
-            Widgets.Label(xpRect, "Expérience");
-            
-            // XP pour niveau suivant
-            Rect nextLevelRect = new Rect(ColumnWidth * 3.5f + 40f, y, ColumnWidth * 1.2f, RowHeight);
-            Widgets.Label(nextLevelRect, "XP Niveau Suivant");
+            // En-têtes des statistiques
+            foreach (StatType statType in System.Enum.GetValues(typeof(StatType)))
+            {
+                Rect statRect = new Rect(currentX, y, StatColumnWidth, RowHeight);
+                Widgets.Label(statRect, CompRPGStats.GetStatDisplayName(statType));
+                currentX += StatColumnWidth + 5f;
+            }
             
             // Statut
-            Rect statusRect = new Rect(ColumnWidth * 4.7f + 50f, y, ColumnWidth, RowHeight);
+            Rect statusRect = new Rect(currentX, y, 100f, RowHeight);
             Widgets.Label(statusRect, "Statut");
             
             GUI.color = Color.white;
@@ -139,40 +147,63 @@ namespace RPGYourStat
             }
 
             var stats = pawn.GetComp<CompRPGStats>();
+            float currentX = 10f;
             
             // Nom du pawn
-            Rect nameRect = new Rect(10f, y, ColumnWidth * 1.5f, RowHeight);
+            Rect nameRect = new Rect(currentX, y, NameColumnWidth, RowHeight);
             Widgets.Label(nameRect, pawn.Name?.ToStringShort ?? "Inconnu");
+            currentX += NameColumnWidth + 10f;
             
             if (stats == null)
             {
                 // Afficher un message si le composant n'existe pas
-                Rect noStatsRect = new Rect(ColumnWidth * 1.5f + 20f, y, ColumnWidth * 3f, RowHeight);
+                Rect noStatsRect = new Rect(currentX, y, StatColumnWidth * 6f, RowHeight);
                 GUI.color = Color.red;
                 Widgets.Label(noStatsRect, "Composant RPG manquant");
                 GUI.color = Color.white;
                 return y + RowHeight;
             }
 
-            // Niveau
-            Rect levelRect = new Rect(ColumnWidth * 1.5f + 20f, y, ColumnWidth, RowHeight);
-            GUI.color = Color.green;
-            Widgets.Label(levelRect, stats.Level.ToString());
-            GUI.color = Color.white;
-            
-            // XP actuelle
-            Rect xpRect = new Rect(ColumnWidth * 2.5f + 30f, y, ColumnWidth, RowHeight);
-            Widgets.Label(xpRect, stats.Experience.ToString("F0"));
-            
-            // XP pour niveau suivant
-            Rect nextLevelRect = new Rect(ColumnWidth * 3.5f + 40f, y, ColumnWidth * 1.2f, RowHeight);
-            int xpNeeded = Mathf.Max(0, stats.GetRequiredExperienceForLevel(stats.Level + 1) - stats.Experience);
-            GUI.color = Color.cyan;
-            Widgets.Label(nextLevelRect, xpNeeded.ToString());
-            GUI.color = Color.white;
+            // Afficher chaque statistique
+            foreach (StatType statType in System.Enum.GetValues(typeof(StatType)))
+            {
+                Rect statRect = new Rect(currentX, y, StatColumnWidth, RowHeight);
+                
+                var stat = stats.GetStat(statType);
+                if (stat != null)
+                {
+                    int nextLevelExp = stats.GetRequiredExperienceForLevel(stat.level + 1);
+                    string statText = $"Niv.{stat.level}\n({stat.experience}/{nextLevelExp})";
+                    
+                    // Couleur basée sur le niveau
+                    GUI.color = GetLevelColor(stat.level);
+                    
+                    // Affichage avec tooltip
+                    Widgets.Label(statRect, statText);
+                    
+                    // Tooltip avec détails
+                    if (Mouse.IsOver(statRect))
+                    {
+                        int expNeeded = nextLevelExp - stat.experience;
+                        string tooltip = $"{CompRPGStats.GetStatDisplayName(statType)}\n" +
+                                       $"Niveau: {stat.level}\n" +
+                                       $"Expérience: {stat.experience}/{nextLevelExp}\n" +
+                                       $"XP restante: {expNeeded}";
+                        TooltipHandler.TipRegion(statRect, tooltip);
+                    }
+                }
+                else
+                {
+                    GUI.color = Color.red;
+                    Widgets.Label(statRect, "ERR");
+                }
+                
+                GUI.color = Color.white;
+                currentX += StatColumnWidth + 5f;
+            }
             
             // Statut
-            Rect statusRect = new Rect(ColumnWidth * 4.7f + 50f, y, ColumnWidth, RowHeight);
+            Rect statusRect = new Rect(currentX, y, 100f, RowHeight);
             string status = GetPawnStatus(pawn);
             Color statusColor = GetStatusColor(pawn);
             GUI.color = statusColor;
@@ -182,16 +213,25 @@ namespace RPGYourStat
             return y + RowHeight;
         }
 
+        private Color GetLevelColor(int level)
+        {
+            if (level >= 20) return Color.magenta;      // Légendaire
+            if (level >= 15) return Color.red;         // Épique
+            if (level >= 10) return Color.blue;        // Rare
+            if (level >= 5) return Color.green;        // Bon
+            return Color.white;                        // Commun
+        }
+
         private float DrawSeparator(float y, float width)
         {
             y += 10f; // Espacement avant
             
-            Rect separatorRect = new Rect(width * 0.1f, y + SeparatorHeight / 2f, width * 0.8f, 2f);
+            Rect separatorRect = new Rect(width * 0.1f, y + 10f, width * 0.8f, 2f);
             GUI.color = Color.gray;
             Widgets.DrawBoxSolid(separatorRect, GUI.color);
             GUI.color = Color.white;
             
-            return y + SeparatorHeight + 10f; // Espacement après
+            return y + 30f; // Espacement après
         }
 
         private string GetPawnStatus(Pawn pawn)
@@ -214,13 +254,27 @@ namespace RPGYourStat
 
         private List<Pawn> GetColonists()
         {
-            return Find.CurrentMap?.mapPawns?.FreeColonists?.ToList() ?? new List<Pawn>();
+            try
+            {
+                return Find.CurrentMap?.mapPawns?.FreeColonists?.ToList() ?? new List<Pawn>();
+            }
+            catch
+            {
+                return new List<Pawn>();
+            }
         }
 
         private List<Pawn> GetAnimals()
         {
-            return Find.CurrentMap?.mapPawns?.PawnsInFaction(Faction.OfPlayer)
-                .Where(p => p.RaceProps.Animal)?.ToList() ?? new List<Pawn>();
+            try
+            {
+                return Find.CurrentMap?.mapPawns?.PawnsInFaction(Faction.OfPlayer)
+                    ?.Where(p => p.RaceProps.Animal)?.ToList() ?? new List<Pawn>();
+            }
+            catch
+            {
+                return new List<Pawn>();
+            }
         }
 
         private float GetTotalContentHeight()
@@ -236,7 +290,7 @@ namespace RPGYourStat
             height += colonists.Count * RowHeight + 10f; // Données + espacement
             
             // Séparateur
-            height += SeparatorHeight + 20f;
+            height += 40f;
             
             // Section animaux
             height += 35f; // Titre
@@ -253,13 +307,13 @@ namespace RPGYourStat
         public override void PreOpen()
         {
             base.PreOpen();
-            Log.Message("L'onglet RPG Stats s'ouvre !");
+            DebugUtils.LogMessage("L'onglet RPG Stats s'ouvre !");
         }
 
         public override void PostClose()
         {
             base.PostClose();
-            Log.Message("L'onglet RPG Stats se ferme.");
+            DebugUtils.LogMessage("L'onglet RPG Stats se ferme.");
         }
     }
 }

@@ -14,7 +14,7 @@
                     </value>
                 </li>
                 
-                <!-- Ajouter aux animaux - exemple avec quelques animaux communs -->
+                <!-- Ajouter aux animaux de base -->
                 <li Class="PatchOperationAdd">
                     <xpath>/Defs/ThingDef[@Name="AnimalThingBase"]/comps</xpath>
                     <value>
