@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<Defs>
+    <!-- Ajouter le composant RPG Stats aux humains -->
+    <ThingDef ParentName="BasePawn" Name="BaseHumanlikeRPG" Abstract="True">
+        <comps>
+            <li Class="RPGYourStat.CompPropertiesRPGStats" />
+        </comps>
+    </ThingDef>
+
+    <!-- Ajouter le composant RPG Stats aux animaux - utiliser AnimalThingBase -->
+    <ThingDef ParentName="AnimalThingBase" Name="BaseAnimalRPG" Abstract="True">
+        <comps>
+            <li Class="RPGYourStat.CompPropertiesRPGStats" />
+        </comps>
+    </ThingDef>
+</Defs>
