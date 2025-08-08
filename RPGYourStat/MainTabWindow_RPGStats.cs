@@ -23,7 +23,7 @@ namespace RPGYourStat
             this.draggable = true;
         }
 
-        public override Vector2 RequestedTabSize => new Vector2(1000f, 700f);
+        public override Vector2 RequestedTabSize => new Vector2(900f, 700f);
 
         public override void DoWindowContents(Rect inRect)
         {
@@ -126,10 +126,6 @@ namespace RPGYourStat
                 currentX += StatColumnWidth + 5f;
             }
             
-            // Statut
-            Rect statusRect = new Rect(currentX, y, 100f, RowHeight);
-            Widgets.Label(statusRect, "Statut");
-            
             GUI.color = Color.white;
             
             return y + RowHeight;
@@ -164,6 +160,11 @@ namespace RPGYourStat
                 return y + RowHeight;
             }
 
+            // Trouver la(les) stat(s) la/les plus haute(s)
+            var highestStats = GetHighestStats(stats);
+            int maxLevel = highestStats.Any() ? highestStats.First().Value : 1;
+            Color highlightColor = GetLevelColor(maxLevel);
+
             // Afficher chaque statistique
             foreach (StatType statType in System.Enum.GetValues(typeof(StatType)))
             {
@@ -175,8 +176,15 @@ namespace RPGYourStat
                     int nextLevelExp = stats.GetRequiredExperienceForLevel(stat.level + 1);
                     string statText = $"Niv.{stat.level}\n({stat.experience}/{nextLevelExp})";
                     
-                    // Couleur basée sur le niveau
-                    GUI.color = GetLevelColor(stat.level);
+                    // Colorer uniquement si cette stat fait partie des plus hautes
+                    if (highestStats.ContainsKey(statType))
+                    {
+                        GUI.color = highlightColor;
+                    }
+                    else
+                    {
+                        GUI.color = Color.white;
+                    }
                     
                     // Affichage avec tooltip
                     Widgets.Label(statRect, statText);
@@ -185,10 +193,12 @@ namespace RPGYourStat
                     if (Mouse.IsOver(statRect))
                     {
                         int expNeeded = nextLevelExp - stat.experience;
-                        string tooltip = $"{CompRPGStats.GetStatDisplayName(statType)}\n" +
+                        string isHighest = highestStats.ContainsKey(statType) ? " (PLUS HAUTE)" : "";
+                        string tooltip = $"{CompRPGStats.GetStatDisplayName(statType)}{isHighest}\n" +
                                        $"Niveau: {stat.level}\n" +
                                        $"Expérience: {stat.experience}/{nextLevelExp}\n" +
-                                       $"XP restante: {expNeeded}";
+                                       $"XP restante: {expNeeded}\n\n" +
+                                       $"Niveau max du pawn: {maxLevel}";
                         TooltipHandler.TipRegion(statRect, tooltip);
                     }
                 }
@@ -201,25 +211,45 @@ namespace RPGYourStat
                 GUI.color = Color.white;
                 currentX += StatColumnWidth + 5f;
             }
-            
-            // Statut
-            Rect statusRect = new Rect(currentX, y, 100f, RowHeight);
-            string status = GetPawnStatus(pawn);
-            Color statusColor = GetStatusColor(pawn);
-            GUI.color = statusColor;
-            Widgets.Label(statusRect, status);
-            GUI.color = Color.white;
 
             return y + RowHeight;
         }
 
-        private Color GetLevelColor(int level)
+        private Dictionary<StatType, int> GetHighestStats(CompRPGStats stats)
         {
-            if (level >= 20) return Color.magenta;      // Légendaire
-            if (level >= 15) return Color.red;         // Épique
-            if (level >= 10) return Color.blue;        // Rare
-            if (level >= 5) return Color.green;        // Bon
-            return Color.white;                        // Commun
+            var result = new Dictionary<StatType, int>();
+            int maxLevel = 1;
+            
+            // Trouver le niveau maximum
+            foreach (StatType statType in System.Enum.GetValues(typeof(StatType)))
+            {
+                var stat = stats.GetStat(statType);
+                if (stat != null && stat.level > maxLevel)
+                {
+                    maxLevel = stat.level;
+                }
+            }
+            
+            // Récupérer toutes les stats qui ont ce niveau maximum
+            foreach (StatType statType in System.Enum.GetValues(typeof(StatType)))
+            {
+                var stat = stats.GetStat(statType);
+                if (stat != null && stat.level == maxLevel)
+                {
+                    result[statType] = stat.level;
+                }
+            }
+            
+            return result;
+        }
+
+        private Color GetLevelColor(int highestLevel)
+        {
+            if (highestLevel >= 20) return Color.magenta;      // Légendaire
+            if (highestLevel >= 15) return Color.red;         // Épique
+            if (highestLevel >= 10) return Color.blue;        // Rare
+            if (highestLevel >= 5) return Color.green;        // Bon
+            return Color.white;                               // Commun
         }
 
         private float DrawSeparator(float y, float width)
@@ -232,24 +262,6 @@ namespace RPGYourStat
             GUI.color = Color.white;
             
             return y + 30f; // Espacement après
-        }
-
-        private string GetPawnStatus(Pawn pawn)
-        {
-            if (pawn.Dead) return "Mort";
-            if (pawn.Downed) return "À terre";
-            if (pawn.InMentalState) return "État mental";
-            if (pawn.health.HasHediffsNeedingTend()) return "Blessé";
-            return "Actif";
-        }
-
-        private Color GetStatusColor(Pawn pawn)
-        {
-            if (pawn.Dead) return Color.red;
-            if (pawn.Downed) return Color.yellow;
-            if (pawn.InMentalState) return Color.magenta;
-            if (pawn.health.HasHediffsNeedingTend()) return new Color(1f, 0.65f, 0f);
-            return Color.green;
         }
 
         private List<Pawn> GetColonists()
@@ -302,18 +314,6 @@ namespace RPGYourStat
             if (!animals.Any()) height += RowHeight;
             
             return height + 50f; // Marge de sécurité
-        }
-
-        public override void PreOpen()
-        {
-            base.PreOpen();
-            DebugUtils.LogMessage("L'onglet RPG Stats s'ouvre !");
-        }
-
-        public override void PostClose()
-        {
-            base.PostClose();
-            DebugUtils.LogMessage("L'onglet RPG Stats se ferme.");
         }
     }
 }

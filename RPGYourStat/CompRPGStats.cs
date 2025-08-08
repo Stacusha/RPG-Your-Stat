@@ -36,8 +36,8 @@ namespace RPGYourStat
     public class CompRPGStats : ThingComp
     {
         private Dictionary<StatType, RPGStat> stats = new Dictionary<StatType, RPGStat>();
-        private const int BaseExperienceRequired = 100;
-        private const float ExperienceMultiplier = 1.5f;
+        
+        private const int BaseExperienceRequired = 1000;
 
         public CompPropertiesRPGStats Props => (CompPropertiesRPGStats)props;
 
@@ -114,13 +114,28 @@ namespace RPGYourStat
         public int GetRequiredExperienceForLevel(int targetLevel)
         {
             if (targetLevel <= 1) return 0;
+
+            // Système cumulatif :
+            // Niveau 2 : 1000 XP total
+            // Niveau 3 : 1000 + (1000 * 2) = 3000 XP total
+            // Niveau 4 : 3000 + (1000 * 3) = 6000 XP total
+            // Niveau 5 : 6000 + (1000 * 4) = 10000 XP total
+            // etc.
             
-            int totalRequired = 0;
-            for (int i = 1; i < targetLevel; i++)
+            int totalExp = 0;
+            for (int level = 2; level <= targetLevel; level++)
             {
-                totalRequired += Mathf.RoundToInt(BaseExperienceRequired * Mathf.Pow(ExperienceMultiplier, i - 1));
+                if (level == 2)
+                {
+                    totalExp += BaseExperienceRequired; // 1000 pour le niveau 2
+                }
+                else
+                {
+                    totalExp += BaseExperienceRequired * (level - 1); // 1000 * (niveau - 1)
+                }
             }
-            return totalRequired;
+            
+            return totalExp;
         }
 
         private void CheckLevelUp(StatType statType)
@@ -188,10 +203,10 @@ namespace RPGYourStat
         // Ajouter cette méthode pour tester le gain d'expérience
         public void GiveTestExperience()
         {
-            // Donner un peu d'expérience dans chaque stat pour tester
+            // Donner plus d'expérience pour tester le nouveau système
             foreach (StatType statType in System.Enum.GetValues(typeof(StatType)))
             {
-                AddExperience(statType, UnityEngine.Random.Range(1, 10));
+                AddExperience(statType, UnityEngine.Random.Range(100, 500)); // Plus d'XP pour le test
             }
         }
     }
