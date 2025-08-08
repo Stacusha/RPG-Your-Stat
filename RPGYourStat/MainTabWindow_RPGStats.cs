@@ -160,10 +160,8 @@ namespace RPGYourStat
                 return y + RowHeight;
             }
 
-            // Trouver la(les) stat(s) la/les plus haute(s)
-            var highestStats = GetHighestStats(stats);
-            int maxLevel = highestStats.Any() ? highestStats.First().Value : 1;
-            Color highlightColor = GetLevelColor(maxLevel);
+            // Obtenir le classement des stats pour ce pawn
+            var statRankings = GetStatRankings(stats);
 
             // Afficher chaque statistique
             foreach (StatType statType in System.Enum.GetValues(typeof(StatType)))
@@ -176,29 +174,21 @@ namespace RPGYourStat
                     int nextLevelExp = stats.GetRequiredExperienceForLevel(stat.level + 1);
                     string statText = $"Niv.{stat.level}\n({stat.experience}/{nextLevelExp})";
                     
-                    // Colorer uniquement si cette stat fait partie des plus hautes
-                    if (highestStats.ContainsKey(statType))
-                    {
-                        GUI.color = highlightColor;
-                    }
-                    else
-                    {
-                        GUI.color = Color.white;
-                    }
+                    // Utiliser la couleur basée sur le classement
+                    GUI.color = GetColorByRanking(statRankings, statType);
                     
                     // Affichage avec tooltip
                     Widgets.Label(statRect, statText);
                     
-                    // Tooltip avec détails
+                    // MODIFIÉ : Tooltip simplifié
                     if (Mouse.IsOver(statRect))
                     {
-                        int expNeeded = nextLevelExp - stat.experience;
-                        string isHighest = highestStats.ContainsKey(statType) ? " (PLUS HAUTE)" : "";
-                        string tooltip = $"{CompRPGStats.GetStatDisplayName(statType)}{isHighest}\n" +
+                        float expNeeded = nextLevelExp - stat.experience;
+                        string rankingInfo = GetRankingText(statRankings, statType);
+                        string tooltip = $"{CompRPGStats.GetStatDisplayName(statType)} {rankingInfo}\n" +
                                        $"Niveau: {stat.level}\n" +
-                                       $"Expérience: {stat.experience}/{nextLevelExp}\n" +
-                                       $"XP restante: {expNeeded}\n\n" +
-                                       $"Niveau max du pawn: {maxLevel}";
+                                       $"Expérience: {stat.experience:F1}/{nextLevelExp}\n" +
+                                       $"XP restante: {expNeeded:F1}";
                         TooltipHandler.TipRegion(statRect, tooltip);
                     }
                 }
@@ -215,41 +205,89 @@ namespace RPGYourStat
             return y + RowHeight;
         }
 
-        private Dictionary<StatType, int> GetHighestStats(CompRPGStats stats)
+        // Obtenir le classement des stats pour un pawn
+        private Dictionary<StatType, int> GetStatRankings(CompRPGStats stats)
         {
-            var result = new Dictionary<StatType, int>();
-            int maxLevel = 1;
+            var statLevels = new Dictionary<StatType, int>();
+            var rankings = new Dictionary<StatType, int>();
             
-            // Trouver le niveau maximum
+            // Collecter tous les niveaux
             foreach (StatType statType in System.Enum.GetValues(typeof(StatType)))
             {
                 var stat = stats.GetStat(statType);
-                if (stat != null && stat.level > maxLevel)
+                if (stat != null)
                 {
-                    maxLevel = stat.level;
+                    statLevels[statType] = stat.level;
                 }
             }
             
-            // Récupérer toutes les stats qui ont ce niveau maximum
-            foreach (StatType statType in System.Enum.GetValues(typeof(StatType)))
+            // Trier par niveau (décroissant) puis par expérience actuelle
+            var sortedStats = statLevels.OrderByDescending(kvp => kvp.Value)
+                .ThenByDescending(kvp => stats.GetStat(kvp.Key)?.experience ?? 0f)
+                .ToList();
+            
+            // Assigner les rangs
+            for (int i = 0; i < sortedStats.Count; i++)
             {
-                var stat = stats.GetStat(statType);
-                if (stat != null && stat.level == maxLevel)
-                {
-                    result[statType] = stat.level;
-                }
+                rankings[sortedStats[i].Key] = i + 1; // Rang de 1 à 6
             }
             
-            return result;
+            return rankings;
         }
 
-        private Color GetLevelColor(int highestLevel)
+        // Obtenir la couleur selon le classement
+        private Color GetColorByRanking(Dictionary<StatType, int> rankings, StatType statType)
         {
-            if (highestLevel >= 20) return Color.magenta;      // Légendaire
-            if (highestLevel >= 15) return Color.red;         // Épique
-            if (highestLevel >= 10) return Color.blue;        // Rare
-            if (highestLevel >= 5) return Color.green;        // Bon
-            return Color.white;                               // Commun
+            if (!rankings.ContainsKey(statType))
+                return Color.white;
+            
+            int rank = rankings[statType];
+            
+            // Créer un dégradé de couleurs basé sur le classement
+            switch (rank)
+            {
+                case 1: // 1er place - Or
+                    return new Color(1.0f, 0.84f, 0.0f); // Gold
+                    
+                case 2: // 2ème place - Argent
+                    return new Color(0.75f, 0.75f, 0.75f); // Silver
+                    
+                case 3: // 3ème place - Bronze
+                    return new Color(0.8f, 0.5f, 0.2f); // Bronze
+                    
+                case 4: // 4ème place - Vert clair
+                    return new Color(0.6f, 0.8f, 0.4f); // Light Green
+                    
+                case 5: // 5ème place - Jaune pâle
+                    return new Color(0.8f, 0.8f, 0.4f); // Pale Yellow
+                    
+                case 6: // 6ème place - Gris
+                    return new Color(0.6f, 0.6f, 0.6f); // Gray
+                    
+                default:
+                    return Color.white;
+            }
+        }
+
+        // Obtenir le texte de classement pour le tooltip
+        private string GetRankingText(Dictionary<StatType, int> rankings, StatType statType)
+        {
+            if (!rankings.ContainsKey(statType))
+                return "";
+            
+            int rank = rankings[statType];
+            string rankText = rank switch
+            {
+                1 => "(1ère - MEILLEURE)",
+                2 => "(2ème)",
+                3 => "(3ème)",
+                4 => "(4ème)",
+                5 => "(5ème)",
+                6 => "(6ème - PLUS FAIBLE)",
+                _ => $"({rank}ème)"
+            };
+            
+            return rankText;
         }
 
         private float DrawSeparator(float y, float width)

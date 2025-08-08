@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<Defs>
+    <HediffDef>
+        <defName>RPGStatBonus</defName>
+        <label>bonus de statistiques RPG</label>
+        <description>Bonus aux statistiques basé sur les niveaux RPG du personnage.</description>
+        <hediffClass>RPGYourStat.Hediff_RPGStatBonus</hediffClass>
+        <defaultLabelColor>(0.8, 1.0, 0.8)</defaultLabelColor>
+        <isBad>false</isBad>
+        <maxSeverity>1.0</maxSeverity>
+        <initialSeverity>1.0</initialSeverity>
+        <everCurableByItem>false</everCurableByItem>
+        <makesSickThought>false</makesSickThought>
+        <tendable>false</tendable>
+        <comps>
+            <li Class="RPGYourStat.HediffCompProperties_RPGStatBonus" />
+        </comps>
+    </HediffDef>
+</Defs>

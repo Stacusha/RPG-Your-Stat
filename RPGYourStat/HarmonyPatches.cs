@@ -14,7 +14,6 @@ namespace RPGYourStat
             try
             {
                 harmony.PatchAll(Assembly.GetExecutingAssembly());
-                DebugUtils.LogMessage("Patches Harmony appliqués avec succès!");
             }
             catch (System.Exception ex)
             {
@@ -37,8 +36,6 @@ namespace RPGYourStat
             // Convertir l'XP de compétence en XP RPG (multiplier par 10 pour éviter l'arrondi à 0)
             float rpgXp = xp * RPGYourStat_Mod.settings.experienceMultiplier * 10f;
             ExperienceManager.GiveExperienceForSkill(__instance.Pawn, __instance.def, rpgXp);
-            
-            DebugUtils.LogMessage($"Pawn {__instance.Pawn.Name} gagne {rpgXp} XP RPG pour {__instance.def.defName} (XP skill: {xp})");
         }
     }
 
@@ -51,10 +48,8 @@ namespace RPGYourStat
             if (!__result || __instance?.CasterPawn == null) return;
             if (RPGYourStat_Mod.settings?.enableCombatExperience != true) return;
             
-            float baseExp = 20f * RPGYourStat_Mod.settings.experienceMultiplier; // Augmenté de 2f à 20f
+            float baseExp = 20f * RPGYourStat_Mod.settings.experienceMultiplier;
             ExperienceManager.GiveCombatExperience(__instance.CasterPawn, true, baseExp);
-            
-            DebugUtils.LogMessage($"{__instance.CasterPawn.Name} gagne de l'XP de combat à distance ({baseExp})");
         }
     }
 
@@ -67,10 +62,8 @@ namespace RPGYourStat
             if (!__result || __instance?.CasterPawn == null) return;
             if (RPGYourStat_Mod.settings?.enableCombatExperience != true) return;
             
-            float baseExp = 20f * RPGYourStat_Mod.settings.experienceMultiplier; // Augmenté de 2f à 20f
+            float baseExp = 20f * RPGYourStat_Mod.settings.experienceMultiplier;
             ExperienceManager.GiveCombatExperience(__instance.CasterPawn, false, baseExp);
-            
-            DebugUtils.LogMessage($"{__instance.CasterPawn.Name} gagne de l'XP de combat au corps à corps ({baseExp})");
         }
     }
 
@@ -83,10 +76,8 @@ namespace RPGYourStat
             if (initiator == null) return;
             if (RPGYourStat_Mod.settings?.enableSocialExperience != true) return;
             
-            float baseExp = 10f * RPGYourStat_Mod.settings.experienceMultiplier; // Augmenté de 1f à 10f
+            float baseExp = 10f * RPGYourStat_Mod.settings.experienceMultiplier;
             ExperienceManager.GiveSocialExperience(initiator, baseExp);
-            
-            DebugUtils.LogMessage($"{initiator.Name} gagne de l'XP sociale pour interaction avec {recipient?.Name} ({baseExp})");
         }
     }
 
@@ -102,8 +93,42 @@ namespace RPGYourStat
             
             float baseExp = 5f * RPGYourStat_Mod.settings.experienceMultiplier;
             ExperienceManager.GiveSocialExperience(initiator, baseExp);
-            
-            DebugUtils.LogMessage($"{initiator.Name} gagne de l'XP sociale pour {intDef.defName} avec {recipient?.Name} ({baseExp})");
+        }
+    }
+
+    // Patch pour appliquer les modificateurs de stats RPG - CORRIGÉ avec signature spécifique
+    [HarmonyPatch(typeof(StatWorker), "GetValue", new System.Type[] { typeof(StatRequest), typeof(bool) })]
+    public static class StatWorker_GetValue_Patch
+    {
+        public static void Postfix(StatWorker __instance, StatRequest req, bool applyPostProcess, ref float __result)
+        {
+            if (req.Thing is Pawn pawn)
+            {
+                // Utiliser la réflexion pour accéder au champ stat
+                var statField = typeof(StatWorker).GetField("stat", BindingFlags.NonPublic | BindingFlags.Instance);
+                if (statField != null)
+                {
+                    StatDef stat = (StatDef)statField.GetValue(__instance);
+                    if (stat != null)
+                    {
+                        float modifier = StatModifierSystem.GetStatModifier(pawn, stat);
+                        if (modifier != 0f)
+                        {
+                            // Appliquer le modificateur comme un facteur multiplicatif
+                            if (stat.formatString != null && stat.formatString.Contains("%"))
+                            {
+                                // Pour les pourcentages, ajouter directement
+                                __result += modifier;
+                            }
+                            else
+                            {
+                                // Pour les autres stats, appliquer comme multiplicateur
+                                __result *= (1f + modifier);
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 }

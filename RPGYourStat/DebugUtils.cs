@@ -12,5 +12,11 @@ namespace RPGYourStat
                 Log.Message($"[RPGYourStat] {message}");
             }
         }
+
+        // Nouvelle méthode pour les messages de level up (toujours affichés)
+        public static void LogLevelUp(string message)
+        {
+            Log.Message($"[RPGYourStat] {message}");
+        }
     }
 }

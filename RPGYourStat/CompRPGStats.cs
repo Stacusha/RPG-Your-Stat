@@ -18,7 +18,7 @@ namespace RPGYourStat
     public class RPGStat
     {
         public int level = 1;
-        public int experience = 0;
+        public float experience = 0f;
         public StatType type;
 
         public RPGStat(StatType statType)
@@ -29,7 +29,7 @@ namespace RPGYourStat
         public void ExposeData(string prefix)
         {
             Scribe_Values.Look(ref level, $"{prefix}_level", 1);
-            Scribe_Values.Look(ref experience, $"{prefix}_experience", 0);
+            Scribe_Values.Look(ref experience, $"{prefix}_experience", 0f);
         }
     }
 
@@ -45,6 +45,27 @@ namespace RPGYourStat
         {
             base.PostSpawnSetup(respawningAfterLoad);
             InitializeStats();
+            ApplyRPGBonusHediff();
+        }
+
+        private void ApplyRPGBonusHediff()
+        {
+            if (parent is Pawn pawn)
+            {
+                // Vérifier si le hediff existe déjà
+                var existingHediff = pawn.health?.hediffSet?.GetFirstHediffOfDef(DefDatabase<HediffDef>.GetNamed("RPGStatBonus", false));
+                if (existingHediff == null)
+                {
+                    // Ajouter le hediff de bonus RPG
+                    var hediffDef = DefDatabase<HediffDef>.GetNamed("RPGStatBonus", false);
+                    if (hediffDef != null)
+                    {
+                        var hediff = HediffMaker.MakeHediff(hediffDef, pawn);
+                        pawn.health.AddHediff(hediff);
+                        // Supprimé le message de debug
+                    }
+                }
+            }
         }
 
         private void InitializeStats()
@@ -70,10 +91,10 @@ namespace RPGYourStat
             return stat?.level ?? 1;
         }
 
-        public int GetStatExperience(StatType statType)
+        public float GetStatExperience(StatType statType)
         {
             var stat = GetStat(statType);
-            return stat?.experience ?? 0;
+            return stat?.experience ?? 0f;
         }
 
         public override void PostExposeData()
@@ -96,9 +117,15 @@ namespace RPGYourStat
                 
                 stats[statType].ExposeData(statType.ToString());
             }
+
+            // Réappliquer le hediff après le chargement
+            if (Scribe.mode == LoadSaveMode.PostLoadInit)
+            {
+                ApplyRPGBonusHediff();
+            }
         }
 
-        public void AddExperience(StatType statType, int amount)
+        public void AddExperience(StatType statType, float amount)
         {
             if (amount <= 0) return;
 
@@ -106,7 +133,6 @@ namespace RPGYourStat
             if (stat == null) return;
 
             stat.experience += amount;
-            DebugUtils.LogMessage($"{parent.Label} gagne {amount} XP en {statType} (Total: {stat.experience})");
             
             CheckLevelUp(statType);
         }
@@ -114,7 +140,7 @@ namespace RPGYourStat
         public int GetRequiredExperienceForLevel(int targetLevel)
         {
             if (targetLevel <= 1) return 0;
-
+            
             // Système cumulatif :
             // Niveau 2 : 1000 XP total
             // Niveau 3 : 1000 + (1000 * 2) = 3000 XP total
@@ -146,18 +172,19 @@ namespace RPGYourStat
             int requiredExp = GetRequiredExperienceForLevel(stat.level + 1);
             if (stat.experience >= requiredExp)
             {
+                stat.experience = 0f;
                 stat.level++;
-                DebugUtils.LogMessage($"{parent.Label} monte au niveau {stat.level} en {statType}!");
+                // GARDÉ : Message de level up (toujours affiché)
+                DebugUtils.LogLevelUp($"{parent.Label} monte au niveau {stat.level} en {statType}!");
                 
-                // Notification de level up
+                // MODIFIÉ : Notification de level up simplifiée (sans description des bonus)
                 if (parent is Pawn pawn && pawn.Faction == Faction.OfPlayer)
                 {
                     Messages.Message($"{pawn.Name?.ToStringShort ?? "Pawn"} monte au niveau {stat.level} en {GetStatDisplayName(statType)}!", 
                         MessageTypeDefOf.PositiveEvent);
                 }
                 
-                // Vérifier si un autre level up est possible
-                CheckLevelUp(statType);
+                // Ne plus vérifier de level up supplémentaire car l'XP est remise à 0
             }
         }
 
@@ -190,10 +217,11 @@ namespace RPGYourStat
                 var stat = GetStat(statType);
                 if (stat != null)
                 {
+                    // MODIFIÉ : Utiliser la méthode existante pour afficher l'XP requise pour le niveau suivant
                     int nextLevelExp = GetRequiredExperienceForLevel(stat.level + 1);
-                    int expNeeded = nextLevelExp - stat.experience;
                     
-                    result.AppendLine($"{GetStatDisplayName(statType)}: Niv.{stat.level} ({stat.experience}/{nextLevelExp} XP)");
+                    // MODIFIÉ : Affichage simplifié sans les bonus
+                    result.AppendLine($"{GetStatDisplayName(statType)}: Niv.{stat.level} ({stat.experience:F1}/{nextLevelExp} XP)");
                 }
             }
             
@@ -206,7 +234,7 @@ namespace RPGYourStat
             // Donner plus d'expérience pour tester le nouveau système
             foreach (StatType statType in System.Enum.GetValues(typeof(StatType)))
             {
-                AddExperience(statType, UnityEngine.Random.Range(100, 500)); // Plus d'XP pour le test
+                AddExperience(statType, UnityEngine.Random.Range(100f, 500f));
             }
         }
     }

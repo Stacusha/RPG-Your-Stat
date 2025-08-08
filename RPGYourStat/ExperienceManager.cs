@@ -8,7 +8,7 @@ namespace RPGYourStat
 {
     public static class ExperienceManager
     {
-        // Mapping des compétences vers les stats RPG avec leurs pourcentages mis à jour
+        // Mapping des compétences vers les stats RPG avec leurs pourcentages
         private static readonly Dictionary<SkillDef, Dictionary<StatType, float>> SkillToStatMapping = 
             new Dictionary<SkillDef, Dictionary<StatType, float>>
             {
@@ -94,8 +94,7 @@ namespace RPGYourStat
                 }
             };
 
-        // Ajouter le mapping pour Growing (qui n'existe pas en tant que SkillDef séparé)
-        // En supposant que Growing fait partie de Plants dans RimWorld
+        // Mapping pour les activités de Growing
         private static readonly Dictionary<StatType, float> GrowingMapping = new Dictionary<StatType, float>
         {
             { StatType.STR, 0.10f },
@@ -119,18 +118,14 @@ namespace RPGYourStat
                 StatType statType = kvp.Key;
                 float percentage = kvp.Value;
                 
-                // Utiliser Mathf.CeilToInt au lieu de RoundToInt pour s'assurer qu'on obtient au moins 1
-                float calculatedExp = baseExperience * percentage;
-                int expToGive = calculatedExp < 1f ? Mathf.CeilToInt(calculatedExp) : Mathf.RoundToInt(calculatedExp);
+                // Calcul direct en float - plus de conversions !
+                float expToGive = baseExperience * percentage;
                 
-                if (expToGive > 0)
+                if (expToGive > 0f)
                 {
                     comp.AddExperience(statType, expToGive);
-                    DebugUtils.LogMessage($"  → {statType}: +{expToGive} XP (calc: {calculatedExp:F2})");
                 }
             }
-
-            DebugUtils.LogMessage($"{pawn.Name} gagne de l'expérience en {skill.defName} (base: {baseExperience:F2})");
         }
 
         public static void GiveCombatExperience(Pawn pawn, bool isRanged, float baseExperience)
@@ -142,30 +137,17 @@ namespace RPGYourStat
             if (isRanged)
             {
                 // Combat à distance (Shooting)
-                int dexExp = Mathf.CeilToInt(baseExperience * 0.50f);
-                int aglExp = Mathf.CeilToInt(baseExperience * 0.40f);
-                int conExp = Mathf.CeilToInt(baseExperience * 0.10f);
-                
-                comp.AddExperience(StatType.DEX, dexExp);
-                comp.AddExperience(StatType.AGL, aglExp);
-                comp.AddExperience(StatType.CON, conExp);
-                
-                DebugUtils.LogMessage($"Combat à distance: DEX +{dexExp}, AGL +{aglExp}, CON +{conExp}");
+                comp.AddExperience(StatType.DEX, baseExperience * 0.50f);
+                comp.AddExperience(StatType.AGL, baseExperience * 0.40f);
+                comp.AddExperience(StatType.CON, baseExperience * 0.10f);
             }
             else
             {
                 // Combat au corps à corps (Melee)
-                int strExp = Mathf.CeilToInt(baseExperience * 0.60f);
-                int dexExp = Mathf.CeilToInt(baseExperience * 0.20f);
-                int aglExp = Mathf.CeilToInt(baseExperience * 0.10f);
-                int conExp = Mathf.CeilToInt(baseExperience * 0.10f);
-                
-                comp.AddExperience(StatType.STR, strExp);
-                comp.AddExperience(StatType.DEX, dexExp);
-                comp.AddExperience(StatType.AGL, aglExp);
-                comp.AddExperience(StatType.CON, conExp);
-                
-                DebugUtils.LogMessage($"Combat corps à corps: STR +{strExp}, DEX +{dexExp}, AGL +{aglExp}, CON +{conExp}");
+                comp.AddExperience(StatType.STR, baseExperience * 0.60f);
+                comp.AddExperience(StatType.DEX, baseExperience * 0.20f);
+                comp.AddExperience(StatType.AGL, baseExperience * 0.10f);
+                comp.AddExperience(StatType.CON, baseExperience * 0.10f);
             }
         }
 
@@ -174,13 +156,8 @@ namespace RPGYourStat
             var comp = pawn?.GetComp<CompRPGStats>();
             if (comp != null)
             {
-                int dexExp = Mathf.CeilToInt(baseExperience * 0.10f);
-                int chaExp = Mathf.CeilToInt(baseExperience * 0.90f);
-                
-                comp.AddExperience(StatType.DEX, dexExp);
-                comp.AddExperience(StatType.CHA, chaExp);
-                
-                DebugUtils.LogMessage($"Expérience sociale: DEX +{dexExp}, CHA +{chaExp}");
+                comp.AddExperience(StatType.DEX, baseExperience * 0.10f);
+                comp.AddExperience(StatType.CHA, baseExperience * 0.90f);
             }
         }
 
@@ -195,17 +172,13 @@ namespace RPGYourStat
                     StatType statType = kvp.Key;
                     float percentage = kvp.Value;
                     
-                    float calculatedExp = baseExperience * percentage;
-                    int expToGive = calculatedExp < 1f ? Mathf.CeilToInt(calculatedExp) : Mathf.RoundToInt(calculatedExp);
+                    float expToGive = baseExperience * percentage;
                     
-                    if (expToGive > 0)
+                    if (expToGive > 0f)
                     {
                         comp.AddExperience(statType, expToGive);
-                        DebugUtils.LogMessage($"  → {statType}: +{expToGive} XP (calc: {calculatedExp:F2})");
                     }
                 }
-                
-                DebugUtils.LogMessage($"{pawn.Name} gagne de l'expérience en Growing (base: {baseExperience:F2})");
             }
         }
     }

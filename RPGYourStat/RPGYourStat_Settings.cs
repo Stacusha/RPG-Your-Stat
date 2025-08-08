@@ -4,8 +4,8 @@ namespace RPGYourStat
 {
     public class RPGYourStat_Settings : ModSettings
     {
-        public bool debugMode = true; // Activé par défaut pour le debug
-        public float experienceMultiplier = 2.0f; // Augmenté pour compenser l'arrondi
+        public bool debugMode = false; // Désactivé par défaut
+        public float experienceMultiplier = 1.0f; // Réduit à 1.0f
         public bool enableCombatExperience = true;
         public bool enableWorkExperience = true;
         public bool enableSocialExperience = true;
@@ -13,8 +13,8 @@ namespace RPGYourStat
         public override void ExposeData()
         {
             base.ExposeData();
-            Scribe_Values.Look(ref debugMode, "debugMode", true);
-            Scribe_Values.Look(ref experienceMultiplier, "experienceMultiplier", 2.0f);
+            Scribe_Values.Look(ref debugMode, "debugMode", false); // Changé la valeur par défaut
+            Scribe_Values.Look(ref experienceMultiplier, "experienceMultiplier", 1.0f);
             Scribe_Values.Look(ref enableCombatExperience, "enableCombatExperience", true);
             Scribe_Values.Look(ref enableWorkExperience, "enableWorkExperience", true);
             Scribe_Values.Look(ref enableSocialExperience, "enableSocialExperience", true);

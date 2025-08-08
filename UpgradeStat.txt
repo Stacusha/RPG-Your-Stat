@@ -1,0 +1,82 @@
+STR
+    WorkSpeedGlobal
+    ConstructionSpeed
+    MiningSpeed
+    MiningYield
+    ConstructionSuccessChance
+    SmoothingSpeed
+    MeleeDamageFactor
+    CarryingCapacity         // Force pour porter plus lourd
+    PlantWorkSpeed           // Force physique pour le travail agricole
+    DeepDrillingSpeed        // Force pour forer en profondeur
+
+DEX
+    ShootingAccuracyPawn
+    MeleeHitChance
+    ReloadSpeed
+    TailoringSpeed
+    SmithingSpeed
+    CookSpeed
+    CraftingSpeedFactor
+    MedicalOperationSpeed
+    ArtSpeed                 // Précision pour l'art
+    ManipulationCapacity     // Dextérité fine
+    DrugSynthesisSpeed       // Précision en chimie
+    ButcheryEfficiency       // Précision dans le dépeçage
+
+AGL
+    MoveSpeed
+    MeleeDodgeChance
+    AimingDelayFactor
+    HuntingStealth
+    WorkSpeedGlobal          // Rapidité d'exécution des tâches
+    ManipulationCapacity     // Coordination rapide
+    RestRateMultiplier       // Récupération plus rapide du repos
+    MentalBreakThreshold     // Résistance au stress (réflexes mentaux)
+    PlantHarvestYield        // Agilité pour récolter efficacement
+    FilthRate                // Moins de saleté grâce à l'agilité
+    EatingSpeed              // Mange plus rapidement
+    RoomCleaningSpeed        // Nettoyage rapide
+    HaulingSpeed             // Transport rapide d'objets
+
+CON
+    CarryingCapacity
+    WorkSpeedGlobal
+    ImmunityGainSpeed
+    MedicalHealingFactor
+    SmeltingSpeed
+    MentalBreakThreshold     // Endurance mentale
+    RestRateMultiplier       // Récupération physique
+    HeatResistance           // Résistance à la chaleur
+    ColdResistance           // Résistance au froid
+    ToxicResistance          // Résistance aux toxines
+    FoodPoisonChance         // Résistance aux empoisonnements
+    PainShockThreshold       // Seuil de choc douloureux plus élevé
+    BleedRateMultiplier      // Saignement réduit
+
+INT
+    ResearchSpeed
+    GlobalLearningFactor
+    MedicalTendQuality
+    MedicalSurgerySuccessChance
+    PlantWorkSpeed           // Connaissance botanique
+    DrugSynthesisSpeed       // Chimie avancée
+    CraftingSpeedFactor      // Connaissance technique
+    TrapSpringChance         // Intelligence pour éviter les pièges
+    NegotiationAbility       // Intelligence émotionnelle
+    CommsConsoleContactChance // Efficacité communications
+    PsychicSensitivity       // Sensibilité psychique (si applicable)
+
+CHA
+    SocialImpact
+    NegotiationAbility
+    TradePriceImprovement
+    TameAnimalChance
+    TrainAnimalChance
+    RecruitPrisonerChance    // Charisme pour recruter
+    GiftImpact               // Impact des cadeaux
+    MoodBonus                // Améliore le moral des autres
+    BeautyMultiplier         // Perception de la beauté
+    WildManTameChance        // Apprivoiser les sauvages
+    ConvertOthersChance      // Convertir à l'idéologie (si DLC)
+    LeadershipBonus          // Bonus de commandement
