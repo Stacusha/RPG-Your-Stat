@@ -15,31 +15,41 @@ namespace RPGYourStat
         CHA  // Charisme
     }
 
-    public class RPGStat
+    public class RPGStat : IExposable
     {
+        public StatType type;
         public int level = 1;
         public float experience = 0f;
-        public StatType type;
+
+        public RPGStat() { }
 
         public RPGStat(StatType statType)
         {
             type = statType;
+            level = 1;
+            experience = 0f;
         }
 
-        public void ExposeData(string prefix)
+        // CORRIGÉ : Implémentation correcte d'IExposable
+        public void ExposeData()
         {
-            Scribe_Values.Look(ref level, $"{prefix}_level", 1);
-            Scribe_Values.Look(ref experience, $"{prefix}_experience", 0f);
+            Scribe_Values.Look(ref level, "level", 1);
+            Scribe_Values.Look(ref experience, "experience", 0f);
+            Scribe_Values.Look(ref type, "type", StatType.STR);
+        }
+
+        // NOUVELLE MÉTHODE : Pour sauvegarder avec un label spécifique
+        public void ExposeDataWithLabel(string label)
+        {
+            Scribe_Values.Look(ref level, $"{label}_level", 1);
+            Scribe_Values.Look(ref experience, $"{label}_experience", 0f);
         }
     }
 
     public class CompRPGStats : ThingComp
     {
-        private Dictionary<StatType, RPGStat> stats = new Dictionary<StatType, RPGStat>();
-        
+        private Dictionary<StatType, RPGStat> stats;
         private const int BaseExperienceRequired = 1000;
-
-        public CompPropertiesRPGStats Props => (CompPropertiesRPGStats)props;
 
         public override void PostSpawnSetup(bool respawningAfterLoad)
         {
@@ -62,7 +72,6 @@ namespace RPGYourStat
                     {
                         var hediff = HediffMaker.MakeHediff(hediffDef, pawn);
                         pawn.health.AddHediff(hediff);
-                        // Supprimé le message de debug
                     }
                 }
             }
@@ -70,6 +79,9 @@ namespace RPGYourStat
 
         private void InitializeStats()
         {
+            if (stats == null)
+                stats = new Dictionary<StatType, RPGStat>();
+
             foreach (StatType statType in System.Enum.GetValues(typeof(StatType)))
             {
                 if (!stats.ContainsKey(statType))
@@ -101,21 +113,26 @@ namespace RPGYourStat
         {
             base.PostExposeData();
             
-            // Initialiser les stats si nécessaire
-            if (Scribe.mode == LoadSaveMode.LoadingVars || stats == null)
+            // MODIFIÉ : Nouvelle approche pour la sauvegarde
+            if (Scribe.mode == LoadSaveMode.Saving)
             {
-                if (stats == null)
-                    stats = new Dictionary<StatType, RPGStat>();
+                // Mode sauvegarde : s'assurer que les stats existent
+                InitializeStats();
+            }
+            
+            if (stats == null)
+            {
+                stats = new Dictionary<StatType, RPGStat>();
                 InitializeStats();
             }
 
-            // Sauvegarder/charger chaque statistique individuellement
+            // CORRIGÉ : Utiliser la nouvelle méthode avec label
             foreach (StatType statType in System.Enum.GetValues(typeof(StatType)))
             {
                 if (!stats.ContainsKey(statType))
                     stats[statType] = new RPGStat(statType);
                 
-                stats[statType].ExposeData(statType.ToString());
+                stats[statType].ExposeDataWithLabel(statType.ToString());
             }
 
             // Réappliquer le hediff après le chargement
@@ -127,14 +144,12 @@ namespace RPGYourStat
 
         public void AddExperience(StatType statType, float amount)
         {
-            if (amount <= 0) return;
-
             var stat = GetStat(statType);
-            if (stat == null) return;
-
-            stat.experience += amount;
-            
-            CheckLevelUp(statType);
+            if (stat != null)
+            {
+                stat.experience += amount;
+                CheckLevelUp(statType);
+            }
         }
 
         public int GetRequiredExperienceForLevel(int targetLevel)
@@ -174,34 +189,32 @@ namespace RPGYourStat
             {
                 stat.experience = 0f;
                 stat.level++;
-                // GARDÉ : Message de level up (toujours affiché)
-                DebugUtils.LogLevelUp($"{parent.Label} monte au niveau {stat.level} en {statType}!");
                 
-                // MODIFIÉ : Notification de level up simplifiée (sans description des bonus)
+                // CORRIGÉ : Utiliser la nouvelle signature avec 3 paramètres et traductions
+                string pawnName = parent?.Label ?? TranslationHelper.GetUIText("Unknown");
+                string statName = GetStatDisplayName(statType);
+                DebugUtils.LogLevelUp(pawnName, statName, stat.level);
+                
+                // MODIFIÉ : Notification de level up avec traductions
                 if (parent is Pawn pawn && pawn.Faction == Faction.OfPlayer)
                 {
-                    Messages.Message($"{pawn.Name?.ToStringShort ?? "Pawn"} monte au niveau {stat.level} en {GetStatDisplayName(statType)}!", 
-                        MessageTypeDefOf.PositiveEvent);
+                    string message = TranslationHelper.GetLevelUpMessage(
+                        pawn.Name?.ToStringShort ?? TranslationHelper.GetUIText("Unknown"),
+                        GetStatDisplayName(statType),
+                        stat.level
+                    );
+                    Messages.Message(message, MessageTypeDefOf.PositiveEvent);
                 }
-                
-                // Ne plus vérifier de level up supplémentaire car l'XP est remise à 0
             }
         }
 
+        // Remplacer la méthode GetStatDisplayName dans CompRPGStats
         public static string GetStatDisplayName(StatType statType)
         {
-            return statType switch
-            {
-                StatType.STR => "Force",
-                StatType.DEX => "Dextérité",
-                StatType.AGL => "Agilité",
-                StatType.CON => "Constitution",
-                StatType.INT => "Intelligence",
-                StatType.CHA => "Charisme",
-                _ => statType.ToString()
-            };
+            return TranslationHelper.GetStatDisplayName(statType);
         }
 
+        // Modifier la méthode CompInspectStringExtra
         public override string CompInspectStringExtra()
         {
             if (stats == null || stats.Count == 0)
@@ -217,28 +230,25 @@ namespace RPGYourStat
                 string currentActivity = GetCurrentActivity(pawn);
                 if (!string.IsNullOrEmpty(currentActivity))
                 {
-                    lines.Add("=== ACTIVITÉ ACTUELLE ===");
+                    lines.Add(TranslationHelper.GetUIText("CurrentActivity"));
                     lines.Add(currentActivity);
                 }
             }
             
             // Ajouter les statistiques RPG
-            lines.Add("=== Statistiques RPG ===");
+            lines.Add(TranslationHelper.GetUIText("RPGStatsHeader"));
             
             foreach (StatType statType in System.Enum.GetValues(typeof(StatType)))
             {
                 var stat = GetStat(statType);
                 if (stat != null)
                 {
-                    // MODIFIÉ : Utiliser la méthode existante pour afficher l'XP requise pour le niveau suivant
                     int nextLevelExp = GetRequiredExperienceForLevel(stat.level + 1);
-                    
-                    // MODIFIÉ : Affichage simplifié sans les bonus
-                    lines.Add($"{GetStatDisplayName(statType)}: Niv.{stat.level} ({stat.experience:F1}/{nextLevelExp} XP)");
+                    string levelText = TranslationHelper.GetUIText("Level");
+                    lines.Add($"{GetStatDisplayName(statType)}: {levelText}{stat.level} ({stat.experience:F1}/{nextLevelExp} XP)");
                 }
             }
             
-            // Joindre toutes les lignes sans lignes vides
             return string.Join("\n", lines);
         }
 
@@ -258,99 +268,30 @@ namespace RPGYourStat
             try
             {
                 if (pawn?.CurJob?.def == null)
-                {
-                    if (pawn?.mindState?.IsIdle == true)
-                        return "🏃 Inactif";
-                    return "🤔 Activité inconnue";
-                }
+                    return TranslationHelper.GetActivityText("Wait");
 
-                var jobDef = pawn.CurJob.def;
-                string jobDefName = jobDef.defName;
+                string jobDefName = pawn.CurJob.def.defName;
                 
-                // NOUVEAU : Détection des activités avec icônes et descriptions
+                // Traduire les activités principales
                 return jobDefName switch
                 {
-                    // === TRAVAIL ET CONSTRUCTION ===
-                    var job when job.Contains("Construct") => "🔨 Construction",
-                    var job when job.Contains("Build") => "🔧 Construction",
-                    var job when job.Contains("Repair") => "🔧 Réparation",
-                    var job when job.Contains("Mine") => "⛏️ Minage",
-                    var job when job.Contains("Smooth") => "🏗️ Lissage",
-                    var job when job.Contains("CleanFilth") => "🧹 Nettoyage",
-                    
-                    // === AGRICULTURE ===
-                    var job when job.Contains("Plant") => "🌱 Plantation",
-                    var job when job.Contains("Harvest") => "🌾 Récolte",
-                    var job when job.Contains("Cut") => "🪓 Coupage",
-                    var job when job.Contains("Sow") => "🌱 Semence",
-                    
-                    // === COMBAT ET CHASSE ===
-                    var job when job.Contains("Hunt") => "🏹 Chasse",
-                    var job when job.Contains("Attack") => "⚔️ Combat",
-                    var job when job.Contains("Fight") => "⚔️ Combat",
-                    var job when job.Contains("Flee") => "🏃 Fuite",
-                    
-                    // === SOINS MÉDICAUX ===
-                    var job when job.Contains("TendPatient") => "🏥 Soins médicaux",
-                    var job when job.Contains("Surgery") => "🔬 Chirurgie",
-                    var job when job.Contains("Rescue") => "🚑 Sauvetage",
-                    
-                    // === TRANSPORT ===
-                    var job when job.Contains("Haul") => GetHaulingDescription(pawn),
-                    var job when job.Contains("Carry") => "📦 Transport",
-                    var job when job.Contains("TakeInventory") => "📦 Collecte",
-                    
-                    // === CRAFTING ET CUISINE ===
-                    var job when job.Contains("Cook") => "🍳 Cuisine",
-                    var job when job.Contains("DoBill") => GetCraftingDescription(pawn),
-                    var job when job.Contains("Make") => "🔨 Fabrication",
-                    
-                    // === SOCIAL ===
-                    var job when job.Contains("Social") => "💬 Interaction sociale",
-                    var job when job.Contains("Chat") => "💬 Discussion",
-                    var job when job.Contains("Recruit") => "🤝 Recrutement",
-                    
-                    // === ANIMAUX SPÉCIFIQUES ===
-                    var job when job.Contains("Train") => GetTrainingDescription(pawn),
-                    var job when job.Contains("Tame") => "🐕 Apprivoisement",
-                    var job when job.Contains("Milk") => "🥛 Traite",
-                    var job when job.Contains("Shear") => "✂️ Tonte",
-                    
-                    // === GARDE ET SÉCURITÉ ===
-                    var job when job.Contains("Guard") => "🛡️ Garde",
-                    var job when job.Contains("Wait") && jobDefName.Contains("Combat") => "⚔️ En position de combat",
-                    
-                    // === RECHERCHE ET ÉTUDE ===
-                    var job when job.Contains("Research") => "🔬 Recherche",
-                    var job when job.Contains("Study") => "📚 Étude",
-                    
-                    // === DIVERTISSEMENT ET REPOS ===
-                    var job when job.Contains("Joy") => "🎉 Divertissement",
-                    var job when job.Contains("Sleep") => "😴 Sommeil",
-                    var job when job.Contains("Rest") => "🛏️ Repos",
-                    var job when job.Contains("Meditate") => "🧘 Méditation",
-                    
-                    // === BESOINS BASIQUES ===
-                    var job when job.Contains("Ingest") => "🍽️ Alimentation",
-                    var job when job.Contains("Eat") => "🍽️ Alimentation",
-                    
-                    // === ACTIVITÉS SPÉCIALES ===
-                    var job when job.Contains("Warden") => "🔒 Gardiennage",
-                    var job when job.Contains("Trade") => "💰 Commerce",
-                    var job when job.Contains("Lovin") => "💕 Romance",
-                    
-                    // === DÉPLACEMENT ===
-                    var job when job.Contains("Goto") => "🚶 Déplacement",
-                    var job when job.Contains("Follow") => "👥 Suivre",
-                    
-                    // Par défaut
-                    _ => $"🔄 {GetFriendlyJobName(jobDefName)}"
+                    "Wait" or "Wait_Downed" or "Wait_MaintainPosture" => TranslationHelper.GetActivityText("Wait"),
+                    "Hunt" => TranslationHelper.GetActivityText("Hunt"),
+                    "Mine" => TranslationHelper.GetActivityText("Mine"),
+                    "Construct" or "ConstructRoof" or "PlaceBlueprint" => TranslationHelper.GetActivityText("Construct"),
+                    "Cook" or "CookMeal" or "DoBill" when pawn.CurJob.bill?.recipe?.defName?.Contains("Cook") == true => TranslationHelper.GetActivityText("Cook"),
+                    "Research" => TranslationHelper.GetActivityText("Research"),
+                    "TendPatient" or "DeliverFood" when pawn.CurJob.targetA.Thing is Pawn => TranslationHelper.GetActivityText("Medical"),
+                    "SocialRelax" or "Chitchat" or "DeepTalk" => TranslationHelper.GetActivityText("Social"),
+                    // CORRIGÉ : Supprimer la référence à pawn.CurJob.verb qui n'existe pas
+                    "AttackMelee" or "AttackStatic" or "UseVerbOnThing" => TranslationHelper.GetActivityText("Combat"),
+                    "HaulToCell" or "HaulToContainer" => GetHaulingDescription(pawn),
+                    _ => GetFriendlyJobName(jobDefName)
                 };
             }
-            catch (System.Exception ex)
+            catch
             {
-                DebugUtils.LogMessage($"Erreur lors de la détection d'activité: {ex.Message}");
-                return "❓ Erreur de détection";
+                return TranslationHelper.GetActivityText("Wait");
             }
         }
 
@@ -363,100 +304,42 @@ namespace RPGYourStat
                 {
                     var item = pawn.CurJob.targetA.Thing;
                     float weight = item.GetStatValue(StatDefOf.Mass);
-                    return $"📦 Transport de {item.def.label} ({weight:F1}kg)";
+                    return TranslationHelper.GetActivityText("Hauling").Translate($"{item.def.label} ({weight:F1}kg)");
                 }
-                return "📦 Transport";
+                return TranslationHelper.GetActivityText("Hauling").Translate(TranslationHelper.GetUIText("UnknownItem"));
             }
             catch
             {
-                return "📦 Transport";
+                return TranslationHelper.GetActivityText("Hauling").Translate(TranslationHelper.GetUIText("UnknownItem"));
             }
         }
 
-        // NOUVELLE MÉTHODE : Description détaillée pour le crafting
-        private string GetCraftingDescription(Pawn pawn)
-        {
-            try
-            {
-                // Essayer de détecter le type de fabrication selon la position
-                if (pawn?.CurJob?.targetA.Thing != null)
-                {
-                    var workbench = pawn.CurJob.targetA.Thing;
-                    string workbenchName = workbench.def.defName.ToLower();
-                    
-                    return workbenchName switch
-                    {
-                        var name when name.Contains("stove") => "🍳 Cuisine",
-                        var name when name.Contains("smithy") => "🔨 Forge",
-                        var name when name.Contains("tailor") => "🧵 Couture",
-                        var name when name.Contains("craft") => "🔧 Artisanat",
-                        var name when name.Contains("drug") => "💊 Pharmacie",
-                        var name when name.Contains("art") => "🎨 Art",
-                        _ => "🔨 Fabrication"
-                    };
-                }
-                return "🔨 Fabrication";
-            }
-            catch
-            {
-                return "🔨 Fabrication";
-            }
-        }
-
-        // NOUVELLE MÉTHODE : Description détaillée pour le dressage
-        private string GetTrainingDescription(Pawn pawn)
-        {
-            try
-            {
-                if (pawn?.CurJob?.targetA.Pawn != null)
-                {
-                    var animal = pawn.CurJob.targetA.Pawn;
-                    return $"🎓 Dresse {animal.Name?.ToStringShort ?? "animal"}";
-                }
-                return "🎓 Dressage";
-            }
-            catch
-            {
-                return "🎓 Dressage";
-            }
-        }
-
-        // NOUVELLE MÉTHODE : Convertir les noms de jobs en français
+        // NOUVELLE MÉTHODE : Convertir les noms de jobs en traductions
         private string GetFriendlyJobName(string jobDefName)
         {
+            string translationKey = $"RPGStats.Job.{jobDefName}";
+            
+            // Essayer la traduction spécifique
+            if (translationKey.CanTranslate())
+            {
+                return translationKey.Translate();
+            }
+            
+            // Sinon utiliser une traduction générique basée sur les patterns courants
             return jobDefName switch
             {
-                "Wait" => "Attendre",
-                "Wait_Downed" => "Inconscient",
-                "Wait_MaintainPosture" => "Maintenir position",
-                "GotoWander" => "Déambulation",
-                "GotoSafeTemperature" => "Chercher température sûre",
-                "LayDown" => "Se coucher",
-                "Standby" => "En attente",
-                "FleeAndCower" => "Fuite et protection",
-                "ManTurret" => "Opérer tourelle",
-                "BeatFire" => "Éteindre feu",
-                "ExtinguishSelf" => "S'éteindre",
-                "Vomit" => "Vomir",
-                "Job_Stumble" => "Tituber",
-                "Strip" => "Déshabiller",
-                "Wear" => "S'habiller",
-                "RemoveApparel" => "Enlever vêtement",
-                "DropEquipment" => "Lâcher équipement",
-                "Equip" => "Équiper",
-                "UnloadInventory" => "Vider inventaire",
-                "TakeFromInventory" => "Prendre inventaire",
-                "UseVerbOnThing" => "Utiliser objet",
-                _ => jobDefName // Utiliser le nom original si pas de traduction
+                var name when name.Contains("Plant") => TranslationHelper.GetActivityText("Farming"),
+                var name when name.Contains("Clean") => TranslationHelper.GetActivityText("Cleaning"),
+                var name when name.Contains("Repair") => TranslationHelper.GetActivityText("Repairing"),
+                var name when name.Contains("Rescue") => TranslationHelper.GetActivityText("Rescuing"),
+                var name when name.Contains("Capture") => TranslationHelper.GetActivityText("Capturing"),
+                var name when name.Contains("Strip") => TranslationHelper.GetActivityText("Stripping"),
+                var name when name.Contains("Equip") => TranslationHelper.GetActivityText("Equipping"),
+                var name when name.Contains("Eat") => TranslationHelper.GetActivityText("Eating"),
+                var name when name.Contains("Sleep") => TranslationHelper.GetActivityText("Sleeping"),
+                var name when name.Contains("Recreation") => TranslationHelper.GetActivityText("Recreation"),
+                _ => TranslationHelper.GetActivityText("Working") // Activité générique
             };
-        }
-    }
-
-    public class CompPropertiesRPGStats : CompProperties
-    {
-        public CompPropertiesRPGStats()
-        {
-            compClass = typeof(CompRPGStats);
         }
     }
 }

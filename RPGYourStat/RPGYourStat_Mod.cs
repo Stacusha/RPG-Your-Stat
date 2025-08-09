@@ -22,26 +22,39 @@ namespace RPGYourStat
 
         private void AddRPGComponentToPawns()
         {
-            var humanDef = DefDatabase<ThingDef>.GetNamed("Human", false);
-            if (humanDef != null && !humanDef.comps.Any(c => c.compClass == typeof(CompRPGStats)))
+            try
             {
-                humanDef.comps.Add(new CompPropertiesRPGStats());
-                Log.Message("[RPGYourStat] Composant RPG ajouté aux humains");
-            }
-
-            var animalDefs = DefDatabase<ThingDef>.AllDefs.Where(def => 
-                def.category == ThingCategory.Pawn && 
-                def.race?.Animal == true);
-
-            foreach (var animalDef in animalDefs)
-            {
-                if (!animalDef.comps.Any(c => c.compClass == typeof(CompRPGStats)))
+                // MODIFIÉ : Simplifier l'ajout du composant
+                if (Find.Maps != null)
                 {
-                    animalDef.comps.Add(new CompPropertiesRPGStats());
+                    foreach (var map in Find.Maps)
+                    {
+                        if (map?.mapPawns?.AllPawns != null)
+                        {
+                            foreach (var pawn in map.mapPawns.AllPawns)
+                            {
+                                if (pawn?.def?.comps != null)
+                                {
+                                    // Vérifier si le composant existe déjà
+                                    var existingComp = pawn.GetComp<CompRPGStats>();
+                                    if (existingComp == null)
+                                    {
+                                        // Ajouter le composant manuellement
+                                        var newComp = new CompRPGStats();
+                                        newComp.parent = pawn;
+                                        pawn.AllComps.Add(newComp);
+                                        newComp.PostSpawnSetup(false);
+                                    }
+                                }
+                            }
+                        }
+                    }
                 }
             }
-
-            Log.Message("[RPGYourStat] Composants RPG ajoutés aux animaux");
+            catch (System.Exception ex)
+            {
+                Log.Error($"[RPGYourStat] Erreur lors de l'ajout du composant RPG: {ex}");
+            }
         }
 
         public override string SettingsCategory()
@@ -49,6 +62,7 @@ namespace RPGYourStat
             return "RPG Your Stat";
         }
 
+        // MODIFIÉ : Forcer la mise à jour des multiplicateurs à chaque ouverture
         public override void DoSettingsWindowContents(Rect inRect)
         {
             // MODIFIÉ : Forcer la mise à jour des multiplicateurs à chaque ouverture
@@ -57,79 +71,110 @@ namespace RPGYourStat
                 settings.statMultipliers = new Dictionary<string, float>();
             }
             
+            // NOUVEAU : Agrandir la fenêtre automatiquement
+            var originalWindowSize = UI.screenWidth * 0.8f; // 80% de la largeur d'écran
+            var newWindowHeight = UI.screenHeight * 0.9f;   // 90% de la hauteur d'écran
+            
+            // MODIFIÉ : Calculer l'espace disponible selon si les paramètres avancés sont ouverts
+            float buttonHeight = 35f;
+            float advancedButtonSpacing = 15f;
+            float basicSettingsHeight = showAdvancedSettings ? 
+                220f : // Plus petit si les paramètres avancés sont ouverts
+                inRect.height - buttonHeight - advancedButtonSpacing - 20f; // Presque toute la fenêtre sinon
+            
+            Rect basicSettingsRect = new Rect(inRect.x, inRect.y, inRect.width, basicSettingsHeight);
+            
             Listing_Standard listing = new Listing_Standard();
-            listing.Begin(inRect);
+            listing.Begin(basicSettingsRect);
 
-            // Paramètres de base
-            listing.CheckboxLabeled("Activer le mode de débogage", ref settings.debugMode, 
-                "Affiche les messages de débogage dans la console.");
+            // Paramètres de base avec plus d'espacement
+            listing.CheckboxLabeled(TranslationHelper.GetSettingsText("DebugMode"), ref settings.debugMode, 
+                TranslationHelper.GetSettingsText("DebugModeTooltip"));
 
-            listing.Gap();
-            listing.Label($"Multiplicateur d'expérience: {settings.experienceMultiplier:F1}");
+            listing.Gap(12f);
+            listing.Label(TranslationHelper.GetSettingsText("ExperienceMultiplier").Translate(settings.experienceMultiplier));
             settings.experienceMultiplier = listing.Slider(settings.experienceMultiplier, 0.1f, 5.0f);
 
-            listing.Gap();
-            listing.CheckboxLabeled("Expérience de combat", ref settings.enableCombatExperience,
-                "Les pawns gagnent de l'XP en combattant.");
+            listing.Gap(12f);
+            listing.CheckboxLabeled(TranslationHelper.GetSettingsText("EnableCombatExperience"), ref settings.enableCombatExperience,
+                TranslationHelper.GetSettingsText("EnableCombatExperienceTooltip"));
 
-            listing.CheckboxLabeled("Expérience de travail", ref settings.enableWorkExperience,
-                "Les pawns gagnent de l'XP en travaillant.");
+            listing.CheckboxLabeled(TranslationHelper.GetSettingsText("EnableWorkExperience"), ref settings.enableWorkExperience,
+                TranslationHelper.GetSettingsText("EnableWorkExperienceTooltip"));
 
-            listing.CheckboxLabeled("Expérience sociale", ref settings.enableSocialExperience,
-                "Les pawns gagnent de l'XP en interagissant socialement.");
+            listing.CheckboxLabeled(TranslationHelper.GetSettingsText("EnableSocialExperience"), ref settings.enableSocialExperience,
+                TranslationHelper.GetSettingsText("EnableSocialExperienceTooltip"));
 
-            listing.Gap();
+            listing.Gap(12f);
             
-            // NOUVEAU : Paramètre pour les animaux avec callback pour mettre à jour les multiplicateurs
+            // Paramètre pour les animaux avec callback pour mettre à jour les multiplicateurs
             bool previousAnimalSetting = settings.enableAnimalRPGStats;
-            listing.CheckboxLabeled("Activer les stats RPG pour les animaux", ref settings.enableAnimalRPGStats,
-                "Les animaux peuvent gagner de l'XP et améliorer leurs statistiques.");
-            
+            listing.CheckboxLabeled(TranslationHelper.GetSettingsText("EnableAnimalRPGStats"), ref settings.enableAnimalRPGStats,
+                TranslationHelper.GetSettingsText("EnableAnimalRPGStatsTooltip"));
+                
             // Si le paramètre a changé, mettre à jour les multiplicateurs
             if (previousAnimalSetting != settings.enableAnimalRPGStats)
             {
                 UpdateMultipliersForAnimalSetting();
             }
 
-            listing.Gap();
+            listing.Gap(12f);
             
-            // NOUVEAU : Paramètres d'équilibrage automatique
-            listing.CheckboxLabeled("Équilibrage automatique des ennemis/alliés", ref settings.enableAutoBalance,
-                "Les ennemis et alliés auront des stats équilibrées par rapport à votre colonie.");
-            
+            // Paramètres d'équilibrage automatique
+            listing.CheckboxLabeled(TranslationHelper.GetSettingsText("EnableAutoBalance"), ref settings.enableAutoBalance,
+                TranslationHelper.GetSettingsText("EnableAutoBalanceTooltip"));
+    
             if (settings.enableAutoBalance)
             {
-                listing.Gap();
-                listing.Label($"Multiplicateur force ennemis: {settings.enemyBalanceMultiplier:F1}");
+                listing.Gap(8f);
+                listing.Label(TranslationHelper.GetSettingsText("EnemyBalanceMultiplier").Translate(settings.enemyBalanceMultiplier));
                 settings.enemyBalanceMultiplier = listing.Slider(settings.enemyBalanceMultiplier, 0.5f, 2.0f);
                 
-                listing.Label($"Multiplicateur force alliés: {settings.allyBalanceMultiplier:F1}");
+                listing.Label(TranslationHelper.GetSettingsText("AllyBalanceMultiplier").Translate(settings.allyBalanceMultiplier));
                 settings.allyBalanceMultiplier = listing.Slider(settings.allyBalanceMultiplier, 0.5f, 2.0f);
-            }
-
-            listing.Gap();
-
-            // Bouton pour les paramètres avancés
-            if (listing.ButtonTextLabeled("Paramètres avancés:", showAdvancedSettings ? "Masquer les coefficients" : "Afficher les coefficients"))
-            {
-                showAdvancedSettings = !showAdvancedSettings;
-            }
-            
-            // NOUVEAU : Bouton pour afficher le rapport d'équilibrage
-            if (settings.enableAutoBalance && listing.ButtonText("Afficher rapport d'équilibrage"))
-            {
-                string report = EnemyStatsBalancer.GetBalanceReport();
-                Find.WindowStack.Add(new Dialog_MessageBox(report, "Fermer"));
             }
 
             listing.End();
 
-            // Interface des paramètres avancés
+            // CORRIGÉ : Position du bouton selon l'état des paramètres avancés
+            float buttonY;
             if (showAdvancedSettings)
             {
-                // Calculer la zone pour les paramètres avancés
-                Rect advancedRect = new Rect(inRect.x, inRect.y + 300f, inRect.width, inRect.height - 300f);
-                DrawAdvancedSettings(advancedRect);
+                // Si les paramètres avancés sont ouverts, le bouton va en bas de la fenêtre
+                buttonY = inRect.y + inRect.height - buttonHeight - 10f;
+            }
+            else
+            {
+                // Si fermés, le bouton va juste après les paramètres de base
+                buttonY = basicSettingsRect.y + basicSettingsRect.height + advancedButtonSpacing;
+            }
+
+            // CORRIGÉ : Bouton pour les paramètres avancés avec position dynamique
+            Rect advancedButtonRect = new Rect(inRect.x + 10f, buttonY, 350f, buttonHeight);
+            string advancedButtonText = showAdvancedSettings ? 
+                TranslationHelper.GetSettingsText("HideCoefficients") : 
+                TranslationHelper.GetSettingsText("ShowCoefficients");
+            
+            // NOUVEAU : Couleur différente pour indiquer l'état
+            GUI.color = showAdvancedSettings ? new Color(1f, 0.7f, 0.7f) : new Color(0.7f, 1f, 0.7f);
+            if (Widgets.ButtonText(advancedButtonRect, $"{TranslationHelper.GetSettingsText("AdvancedSettings")}: {advancedButtonText}"))
+            {
+                showAdvancedSettings = !showAdvancedSettings;
+            }
+            GUI.color = Color.white;
+
+            // CORRIGÉ : Interface des paramètres avancés SEULEMENT si ouverts
+            if (showAdvancedSettings)
+            {
+                // MODIFIÉ : Position entre les paramètres de base et le bouton
+                float advancedY = basicSettingsRect.y + basicSettingsRect.height + 10f;
+                float advancedHeight = buttonY - advancedY - 10f; // Espace entre les paramètres et le bouton
+                
+                if (advancedHeight > 150f) // S'assurer qu'il y a assez d'espace
+                {
+                    Rect advancedRect = new Rect(inRect.x, advancedY, inRect.width, advancedHeight);
+                    DrawAdvancedSettings(advancedRect);
+                }
             }
 
             base.DoSettingsWindowContents(inRect);
@@ -200,111 +245,117 @@ namespace RPGYourStat
             }
         }
 
+        // CORRIGÉ : Méthode DrawAdvancedSettings avec beaucoup plus d'espacement
         private void DrawAdvancedSettings(Rect inRect)
         {
-            // En-tête
-            Rect headerRect = new Rect(inRect.x, inRect.y, inRect.width, 30f);
-            Text.Font = GameFont.Medium;
+            // MODIFIÉ : En-tête plus compact
+            Rect headerRect = new Rect(inRect.x, inRect.y, inRect.width, 25f); // Plus petit
+            GUI.color = new Color(0.1f, 0.1f, 0.1f, 0.9f);
+            Widgets.DrawBoxSolid(headerRect, GUI.color);
             GUI.color = Color.cyan;
-            Widgets.Label(headerRect, "=== MULTIPLICATEURS DES BONUS RPG ===");
+            Text.Font = GameFont.Medium;
+            Widgets.Label(headerRect, TranslationHelper.GetSettingsText("AdvancedSettingsHeader"));
             GUI.color = Color.white;
             Text.Font = GameFont.Small;
 
-            Rect descRect = new Rect(inRect.x, inRect.y + 35f, inRect.width, 40f);
-            Widgets.Label(descRect, "Modifiez les bonus par niveau pour chaque amélioration (de -10% à +10%):");
+            // MODIFIÉ : Description plus compacte
+            Rect descRect = new Rect(inRect.x, inRect.y + 30f, inRect.width, 20f); // Plus petit
+            GUI.color = Color.gray;
+            Widgets.Label(descRect, TranslationHelper.GetSettingsText("AdvancedSettingsDescription"));
+            GUI.color = Color.white;
 
-            // Zone de scroll pour les paramètres avancés
-            Rect scrollRect = new Rect(inRect.x, inRect.y + 80f, inRect.width, inRect.height - 120f);
-            Rect viewRect = new Rect(0f, 0f, scrollRect.width - 16f, GetAdvancedSettingsHeight());
+            // MODIFIÉ : Zone de scroll utilisant TOUT l'espace disponible
+            Rect scrollRect = new Rect(inRect.x, inRect.y + 55f, inRect.width, inRect.height - 95f); // Utilise tout l'espace
+            float totalHeight = GetAdvancedSettingsHeight();
+            Rect viewRect = new Rect(0f, 0f, scrollRect.width - 20f, totalHeight);
             
             Widgets.BeginScrollView(scrollRect, ref scrollPosition, viewRect);
             
-            float currentY = 0f;
+            float currentY = 10f; // Commencer avec un peu de marge
             
-            // Grouper par type (humains puis animaux si activés)
+            // Dessiner les stats des humains avec plus d'espacement
             var humanStatGroups = new[]
             {
-                new { Type = "STR", Name = "FORCE (Humains)", Color = new Color(1.0f, 0.5f, 0.5f), Prefix = "" },
-                new { Type = "DEX", Name = "DEXTÉRITÉ (Humains)", Color = new Color(0.5f, 1.0f, 0.5f), Prefix = "" },
-                new { Type = "AGL", Name = "AGILITÉ (Humains)", Color = new Color(0.5f, 0.5f, 1.0f), Prefix = "" },
-                new { Type = "CON", Name = "CONSTITUTION (Humains)", Color = new Color(1.0f, 0.8f, 0.3f), Prefix = "" },
-                new { Type = "INT", Name = "INTELLIGENCE (Humains)", Color = new Color(0.8f, 0.3f, 1.0f), Prefix = "" },
-                new { Type = "CHA", Name = "CHARISME (Humains)", Color = new Color(1.0f, 0.3f, 0.8f), Prefix = "" }
+                new { Type = "STR", Name = TranslationHelper.GetStatDisplayName(StatType.STR), Color = new Color(1.0f, 0.5f, 0.5f) },
+                new { Type = "DEX", Name = TranslationHelper.GetStatDisplayName(StatType.DEX), Color = new Color(0.5f, 1.0f, 0.5f) },
+                new { Type = "AGL", Name = TranslationHelper.GetStatDisplayName(StatType.AGL), Color = new Color(0.5f, 0.5f, 1.0f) },
+                new { Type = "CON", Name = TranslationHelper.GetStatDisplayName(StatType.CON), Color = new Color(1.0f, 0.8f, 0.3f) },
+                new { Type = "INT", Name = TranslationHelper.GetStatDisplayName(StatType.INT), Color = new Color(0.8f, 0.3f, 1.0f) },
+                new { Type = "CHA", Name = TranslationHelper.GetStatDisplayName(StatType.CHA), Color = new Color(1.0f, 0.3f, 0.8f) }
             };
-
+            
             // Dessiner les stats des humains
             for (int i = 0; i < humanStatGroups.Length; i++)
             {
                 var statGroup = humanStatGroups[i];
                 currentY = DrawStatGroupHeader(statGroup.Name, statGroup.Color, currentY, viewRect.width);
                 currentY = DrawStatMultipliers(statGroup.Type, currentY, viewRect.width);
-                currentY += 20f;
+                currentY += 25f;
             }
 
-            // NOUVEAU : Dessiner les stats des animaux si activées
+            // Dessiner les stats des animaux si activées
             if (settings.enableAnimalRPGStats)
             {
+                currentY += 15f; // Espacement supplémentaire avant les animaux
+                
                 var animalStatGroups = new[]
                 {
-                    new { Type = "ANIMAL_STR", Name = "FORCE (Animaux)", Color = new Color(1.0f, 0.3f, 0.3f), Prefix = "ANIMAL_" },
-                    new { Type = "ANIMAL_DEX", Name = "DEXTÉRITÉ (Animaux)", Color = new Color(0.3f, 1.0f, 0.3f), Prefix = "ANIMAL_" },
-                    new { Type = "ANIMAL_AGL", Name = "AGILITÉ (Animaux)", Color = new Color(0.3f, 0.3f, 1.0f), Prefix = "ANIMAL_" },
-                    new { Type = "ANIMAL_CON", Name = "CONSTITUTION (Animaux)", Color = new Color(1.0f, 0.6f, 0.1f), Prefix = "ANIMAL_" },
-                    new { Type = "ANIMAL_INT", Name = "INTELLIGENCE (Animaux)", Color = new Color(0.6f, 0.1f, 1.0f), Prefix = "ANIMAL_" },
-                    new { Type = "ANIMAL_CHA", Name = "CHARISME (Animaux)", Color = new Color(1.0f, 0.1f, 0.6f), Prefix = "ANIMAL_" }
+                    new { Type = "ANIMAL_STR", Name = TranslationHelper.GetAnimalStatGroupName(StatType.STR), Color = new Color(1.0f, 0.3f, 0.3f) },
+                    new { Type = "ANIMAL_DEX", Name = TranslationHelper.GetAnimalStatGroupName(StatType.DEX), Color = new Color(0.3f, 1.0f, 0.3f) },
+                    new { Type = "ANIMAL_AGL", Name = TranslationHelper.GetAnimalStatGroupName(StatType.AGL), Color = new Color(0.3f, 0.3f, 1.0f) },
+                    new { Type = "ANIMAL_CON", Name = TranslationHelper.GetAnimalStatGroupName(StatType.CON), Color = new Color(1.0f, 0.6f, 0.1f) },
+                    new { Type = "ANIMAL_INT", Name = TranslationHelper.GetAnimalStatGroupName(StatType.INT), Color = new Color(0.6f, 0.1f, 1.0f) },
+                    new { Type = "ANIMAL_CHA", Name = TranslationHelper.GetAnimalStatGroupName(StatType.CHA), Color = new Color(1.0f, 0.1f, 0.6f) }
                 };
-
-                // Séparateur
-                currentY += 20f;
-                Rect separatorRect = new Rect(viewRect.width * 0.1f, currentY, viewRect.width * 0.8f, 2f);
-                GUI.color = Color.gray;
-                Widgets.DrawBoxSolid(separatorRect, GUI.color);
-                GUI.color = Color.white;
-                currentY += 30f;
-
+                
                 for (int i = 0; i < animalStatGroups.Length; i++)
                 {
                     var statGroup = animalStatGroups[i];
                     currentY = DrawStatGroupHeader(statGroup.Name, statGroup.Color, currentY, viewRect.width);
                     currentY = DrawStatMultipliers(statGroup.Type, currentY, viewRect.width);
-                    currentY += 20f;
+                    currentY += 25f;
                 }
             }
             else
             {
-                // Afficher un message si les stats des animaux sont désactivées
-                currentY += 20f;
-                Rect disabledRect = new Rect(20f, currentY, viewRect.width - 40f, 30f);
+                // Message indiquant que les stats animaux sont désactivées
+                Rect disabledRect = new Rect(10f, currentY, viewRect.width - 20f, 30f);
                 GUI.color = Color.gray;
                 Text.Font = GameFont.Medium;
-                Widgets.Label(disabledRect, "=== STATS ANIMAUX DÉSACTIVÉES ===");
+                Widgets.Label(disabledRect, TranslationHelper.GetMessageText("AnimalStatsDisabledSettings"));
                 GUI.color = Color.white;
                 Text.Font = GameFont.Small;
-                currentY += 50f;
+                currentY += 40f;
             }
             
-            Widgets.EndScrollView();
-            
-            // Bouton de réinitialisation
-            Rect resetButtonRect = new Rect(inRect.x, inRect.y + inRect.height - 35f, 200f, 30f);
-            if (Widgets.ButtonText(resetButtonRect, "Réinitialiser aux valeurs par défaut"))
+            // NOUVEAU : Bouton de réinitialisation DANS la zone de scroll, en bas
+            currentY += 20f; // Espacement
+            Rect resetButtonRect = new Rect(10f, currentY, 200f, 30f);
+            GUI.color = new Color(0.7f, 0.2f, 0.2f);
+            if (Widgets.ButtonText(resetButtonRect, TranslationHelper.GetSettingsText("ResetToDefaults")))
             {
                 ResetToDefaults();
             }
+            GUI.color = Color.white;
+            
+            currentY += 40f; // Marge finale
+            
+            Widgets.EndScrollView();
         }
 
-        // NOUVELLE MÉTHODE : Dessiner l'en-tête d'un groupe de stats
+        // MODIFIÉ : Dessiner l'en-tête d'un groupe de stats avec plus d'espacement
         private float DrawStatGroupHeader(string title, Color color, float startY, float width)
         {
-            Rect statHeaderRect = new Rect(0f, startY, width, 30f);
+            Rect statHeaderRect = new Rect(0f, startY, width, 30f); // MODIFIÉ : Plus de hauteur
             GUI.color = color;
             Text.Font = GameFont.Medium;
             Widgets.Label(statHeaderRect, $"=== {title} ===");
             GUI.color = Color.white;
             Text.Font = GameFont.Small;
-            return startY + 35f;
+            return startY + 35f; // MODIFIÉ : Plus d'espacement
         }
 
+        // MODIFIÉ : Plus d'espacement entre les lignes de multiplicateurs
         private float DrawStatMultipliers(string statType, float startY, float width)
         {
             float currentY = startY;
@@ -314,19 +365,21 @@ namespace RPGYourStat
             
             foreach (string key in multiplierKeys)
             {
-                string statName = GetFriendlyStatName(key.Substring(statType.Length + 1));
+                // CORRIGÉ : Extraire le nom de la stat et utiliser les vraies traductions RimWorld
+                string statDefName = key.Substring(statType.Length + 1);
+                string statName = GetFriendlyStatName(statDefName);
                 float currentValue = settings.GetStatMultiplier(key, 0f);
                 
-                // Layout en colonnes
-                Rect labelRect = new Rect(20f, currentY, width * 0.45f, 24f);
-                Rect sliderRect = new Rect(width * 0.5f, currentY, width * 0.35f, 24f);
-                Rect valueRect = new Rect(width * 0.87f, currentY, width * 0.13f, 24f);
+                // Layout en colonnes avec plus de hauteur
+                Rect labelRect = new Rect(20f, currentY, width * 0.45f, 25f); // MODIFIÉ : Plus de hauteur
+                Rect sliderRect = new Rect(width * 0.5f, currentY + 2f, width * 0.35f, 25f);
+                Rect valueRect = new Rect(width * 0.87f, currentY, width * 0.13f, 25f);
                 
                 // Nom de la stat avec tooltip
                 Widgets.Label(labelRect, statName);
                 if (Mouse.IsOver(labelRect))
                 {
-                    TooltipHandler.TipRegion(labelRect, $"Clé interne: {key}");
+                    TooltipHandler.TipRegion(labelRect, $"Internal key: {key}\nStatDef: {statDefName}");
                 }
                 
                 // Slider
@@ -344,76 +397,13 @@ namespace RPGYourStat
                     settings.SetStatMultiplier(key, newValue);
                 }
                 
-                currentY += 28f;
+                currentY += 28f; // MODIFIÉ : Plus d'espacement entre lignes
             }
             
             return currentY;
         }
 
-        private string GetFriendlyStatName(string statKey)
-        {
-            // Convertir les clés internes en noms plus lisibles - CORRECTION DES DOUBLONS
-            return statKey switch
-            {
-                // STR - FORCE
-                "WorkSpeedGlobal" => "Vitesse de travail globale",
-                "ConstructionSpeed" => "Vitesse de construction",
-                "MiningSpeed" => "Vitesse de minage",
-                "MiningYield" => "Rendement de minage",
-                "ConstructSuccessChance" => "Chance de réussite construction",
-                "SmoothingSpeed" => "Vitesse de lissage",
-                "MeleeDamageFactor" => "Facteur de dégâts mêlée",
-                "CarryingCapacity" => "Capacité de port",
-                "PlantWorkSpeed" => "Vitesse de travail des plantes",
-                "DeepDrillingSpeed" => "Vitesse de forage profond",
-                
-                // DEX - DEXTÉRITÉ
-                "ShootingAccuracyPawn" => "Précision de tir",
-                "MeleeHitChance" => "Chance de toucher en mêlée",
-                "MedicalTendSpeed" => "Vitesse de soins médicaux",
-                "MedicalTendQuality" => "Qualité soins médicaux",
-                "SurgerySuccessChanceFactor" => "Facteur réussite chirurgie",
-                "FoodPoisonChance" => "Chance d'empoisonnement alimentaire",
-                
-                // AGL - AGILITÉ
-                "MoveSpeed" => "Vitesse de déplacement",
-                "MeleeDodgeChance" => "Chance d'esquive mêlée",
-                "AimingDelayFactor" => "Facteur délai de visée",
-                "HuntingStealth" => "Discrétion de chasse",
-                "RestRateMultiplier" => "Multiplicateur de repos",
-                "PlantHarvestYield" => "Rendement de récolte",
-                "FilthRate" => "Taux de saleté",
-                "EatingSpeed" => "Vitesse d'alimentation",
-                
-                // CON - CONSTITUTION
-                "ImmunityGainSpeed" => "Vitesse gain d'immunité",
-                "ComfyTemperatureMin" => "Température confort minimale",
-                "ComfyTemperatureMax" => "Température confort maximale",
-                "ToxicResistance" => "Résistance toxique",
-                "PainShockThreshold" => "Seuil de choc douloureux",
-                "MentalBreakThreshold" => "Seuil de crise mentale",
-                
-                // INT - INTELLIGENCE
-                "ResearchSpeed" => "Vitesse de recherche",
-                "GlobalLearningFactor" => "Facteur d'apprentissage global",
-                "MedicalSurgerySuccessChance" => "Chance de réussite chirurgie",
-                "TrapSpringChance" => "Chance de déclencher un piège",
-                "NegotiationAbility" => "Capacité de négociation",
-                "PsychicSensitivity" => "Sensibilité psychique",
-                
-                // CHA - CHARISME
-                "SocialImpact" => "Impact social",
-                "TradePriceImprovement" => "Amélioration prix de commerce",
-                "TameAnimalChance" => "Chance d'apprivoiser animal",
-                "TrainAnimalChance" => "Chance de dresser animal",
-                "AnimalGatherYield" => "Rendement collecte animal",
-                "Beauty" => "Beauté",
-                "ArrestSuccessChance" => "Chance de réussite d'arrestation",
-                
-                _ => statKey // Utiliser la clé originale si pas de traduction
-            };
-        }
-
+        // CORRIGÉ : Ajuster la hauteur calculée avec les nouveaux espacements
         private float GetAdvancedSettingsHeight()
         {
             // Calculer la hauteur nécessaire pour tous les paramètres avancés
@@ -421,7 +411,8 @@ namespace RPGYourStat
             int humanSections = 6; // STR, DEX, AGL, CON, INT, CHA pour humains
             int animalSections = settings.enableAnimalRPGStats ? 6 : 0; // Même chose pour animaux si activé
             
-            float baseHeight = (totalMultipliers * 28f) + ((humanSections + animalSections) * 55f) + 200f;
+            // MODIFIÉ : Ajuster les calculs avec les nouveaux espacements plus généreux
+            float baseHeight = (totalMultipliers * 28f) + ((humanSections + animalSections) * 60f) + 200f;
             
             if (!settings.enableAnimalRPGStats)
             {
@@ -436,6 +427,20 @@ namespace RPGYourStat
             settings.statMultipliers.Clear();
             settings.InitializeDefaultMultipliers();
             Messages.Message("Multiplicateurs réinitialisés aux valeurs par défaut", MessageTypeDefOf.PositiveEvent);
+        }
+
+        // CORRIGÉ : Méthode GetFriendlyStatName avec traductions
+        private string GetFriendlyStatName(string statKey)
+        {
+            // NOUVEAU : Utiliser directement les StatDefs de RimWorld pour les traductions automatiques
+            var statDef = DefDatabase<StatDef>.GetNamedSilentFail(statKey);
+            if (statDef != null)
+            {
+                return statDef.label.CapitalizeFirst();
+            }
+            
+            // Fallback pour les clés personnalisées
+            return TranslationHelper.GetStatName(statKey);
         }
     }
 }

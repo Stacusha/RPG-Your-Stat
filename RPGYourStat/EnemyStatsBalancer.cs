@@ -344,27 +344,20 @@ namespace RPGYourStat
         public static string GetBalanceReport()
         {
             var report = new System.Text.StringBuilder();
-            report.AppendLine("=== RAPPORT D'ÉQUILIBRAGE RPG ===");
-            
-            // CORRIGÉ : Utiliser la même vérification
-            if (!IsGameReady())
-            {
-                report.AppendLine("Jeu non initialisé");
-                return report.ToString();
-            }
-            
-            float colonyPower = GetColonyAverageStatLevel();
-            report.AppendLine($"Puissance moyenne colonie: {colonyPower:F1}");
-            
-            var difficulty = GetDifficultyMultiplier();
-            report.AppendLine($"Multiplicateur difficulté: {difficulty:F1}");
+            report.AppendLine(TranslationHelper.GetBalanceText("ReportTitle"));
             
             var playerFaction = Faction.OfPlayer;
             if (playerFaction == null)
             {
-                report.AppendLine("Faction du joueur non trouvée");
+                report.AppendLine(TranslationHelper.GetBalanceText("PlayerFactionNotFound"));
                 return report.ToString();
             }
+            
+            float colonyPower = GetColonyAverageStatLevel();
+            report.AppendLine(TranslationHelper.GetBalanceText("ColonyPower").Translate(colonyPower));
+            
+            var difficulty = GetDifficultyMultiplier();
+            report.AppendLine(TranslationHelper.GetBalanceText("DifficultyMultiplier").Translate(difficulty));
             
             // Statistiques des ennemis récents
             var allPawns = Find.CurrentMap?.mapPawns?.AllPawns?.Where(p => 

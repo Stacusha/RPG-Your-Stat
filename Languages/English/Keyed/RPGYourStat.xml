@@ -1,0 +1,104 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<LanguageData>
+  <!-- Settings -->
+  <RPGStats.Settings.DebugMode>Debug Mode</RPGStats.Settings.DebugMode>
+  <RPGStats.Settings.DebugModeTooltip>Enable debug logging for RPG stats</RPGStats.Settings.DebugModeTooltip>
+  <RPGStats.Settings.ExperienceMultiplier>Experience Multiplier: {0}</RPGStats.Settings.ExperienceMultiplier>
+  <RPGStats.Settings.EnableCombatExperience>Enable Combat Experience</RPGStats.Settings.EnableCombatExperience>
+  <RPGStats.Settings.EnableCombatExperienceTooltip>Allow gaining experience from combat</RPGStats.Settings.EnableCombatExperienceTooltip>
+  <RPGStats.Settings.EnableWorkExperience>Enable Work Experience</RPGStats.Settings.EnableWorkExperience>
+  <RPGStats.Settings.EnableWorkExperienceTooltip>Allow gaining experience from work tasks</RPGStats.Settings.EnableWorkExperienceTooltip>
+  <RPGStats.Settings.EnableSocialExperience>Enable Social Experience</RPGStats.Settings.EnableSocialExperience>
+  <RPGStats.Settings.EnableSocialExperienceTooltip>Allow gaining experience from social interactions</RPGStats.Settings.EnableSocialExperienceTooltip>
+  <RPGStats.Settings.EnableAnimalRPGStats>Enable Animal RPG Stats</RPGStats.Settings.EnableAnimalRPGStats>
+  <RPGStats.Settings.EnableAnimalRPGStatsTooltip>Allow animals to gain RPG stats and bonuses</RPGStats.Settings.EnableAnimalRPGStatsTooltip>
+  <RPGStats.Settings.EnableAutoBalance>Enable Auto Balance</RPGStats.Settings.EnableAutoBalance>
+  <RPGStats.Settings.EnableAutoBalanceTooltip>Automatically balance enemy and ally stats</RPGStats.Settings.EnableAutoBalanceTooltip>
+  <RPGStats.Settings.EnemyBalanceMultiplier>Enemy Balance Multiplier: {0}</RPGStats.Settings.EnemyBalanceMultiplier>
+  <RPGStats.Settings.AllyBalanceMultiplier>Ally Balance Multiplier: {0}</RPGStats.Settings.AllyBalanceMultiplier>
+  <RPGStats.Settings.AdvancedSettings>Advanced Settings</RPGStats.Settings.AdvancedSettings>
+  <RPGStats.Settings.ShowCoefficients>Show Coefficients</RPGStats.Settings.ShowCoefficients>
+  <RPGStats.Settings.HideCoefficients>Hide Coefficients</RPGStats.Settings.HideCoefficients>
+  <RPGStats.Settings.AdvancedSettingsHeader>Advanced Settings - Stat Multipliers</RPGStats.Settings.AdvancedSettingsHeader>
+  <RPGStats.Settings.AdvancedSettingsDescription>Adjust the bonus multipliers for each stat. Values are percentages per level.</RPGStats.Settings.AdvancedSettingsDescription>
+  <RPGStats.Settings.ResetToDefaults>Reset to Defaults</RPGStats.Settings.ResetToDefaults>
+
+  <!-- Stat Names -->
+  <RPGStats.StatName.STR>Strength</RPGStats.StatName.STR>
+  <RPGStats.StatName.DEX>Dexterity</RPGStats.StatName.DEX>
+  <RPGStats.StatName.AGL>Agility</RPGStats.StatName.AGL>
+  <RPGStats.StatName.CON>Constitution</RPGStats.StatName.CON>
+  <RPGStats.StatName.INT>Intelligence</RPGStats.StatName.INT>
+  <RPGStats.StatName.CHA>Charisma</RPGStats.StatName.CHA>
+
+  <!-- Animal Stat Groups -->
+  <RPGStats.StatGroup.AnimalSTR>Animal Strength</RPGStats.StatGroup.AnimalSTR>
+  <RPGStats.StatGroup.AnimalDEX>Animal Dexterity</RPGStats.StatGroup.AnimalDEX>
+  <RPGStats.StatGroup.AnimalAGL>Animal Agility</RPGStats.StatGroup.AnimalAGL>
+  <RPGStats.StatGroup.AnimalCON>Animal Constitution</RPGStats.StatGroup.AnimalCON>
+  <RPGStats.StatGroup.AnimalINT>Animal Intelligence</RPGStats.StatGroup.AnimalINT>
+  <RPGStats.StatGroup.AnimalCHA>Animal Charisma</RPGStats.StatGroup.AnimalCHA>
+
+  <!-- Messages -->
+  <RPGStats.Message.LevelUp>{0} leveled up {1} to level {2}!</RPGStats.Message.LevelUp>
+  <RPGStats.Message.ForceBalanceSuccess>Force balance completed for {0} enemies</RPGStats.Message.ForceBalanceSuccess>
+  <RPGStats.Message.AnimalStatsDisabled>Animal RPG stats are disabled</RPGStats.Message.AnimalStatsDisabled>
+  <RPGStats.Message.AnimalStatsDisabledSettings>Animal RPG stats are disabled in settings</RPGStats.Message.AnimalStatsDisabledSettings>
+
+  <!-- UI Elements -->
+  <RPGStats.UI.WindowTitle>RPG Stats Overview</RPGStats.UI.WindowTitle>
+  <RPGStats.UI.Colonists>Colonists</RPGStats.UI.Colonists>
+  <RPGStats.UI.Animals>Animals</RPGStats.UI.Animals>
+  <RPGStats.UI.NoColonists>No colonists found</RPGStats.UI.NoColonists>
+  <RPGStats.UI.NoAnimals>No animals found</RPGStats.UI.NoAnimals>
+  <RPGStats.UI.Name>Name</RPGStats.UI.Name>
+  <RPGStats.UI.Unknown>Unknown</RPGStats.UI.Unknown>
+  <RPGStats.UI.AnimalIndicator>A</RPGStats.UI.AnimalIndicator>
+  <RPGStats.UI.MissingRPGComponent>Missing RPG component</RPGStats.UI.MissingRPGComponent>
+  <RPGStats.UI.Error>ERR</RPGStats.UI.Error>
+  <RPGStats.UI.Level>Lv.</RPGStats.UI.Level>
+  <RPGStats.UI.AndMore>... and {0} more improvements</RPGStats.UI.AndMore>
+  <RPGStats.UI.UnknownItem>unknown item</RPGStats.UI.UnknownItem>
+  <RPGStats.UI.CurrentActivity>Current Activity:</RPGStats.UI.CurrentActivity>
+  <RPGStats.UI.RPGStatsHeader>RPG Stats:</RPGStats.UI.RPGStatsHeader>
+
+  <!-- Activities -->
+  <RPGStats.Activity.Wait>Waiting</RPGStats.Activity.Wait>
+  <RPGStats.Activity.Hunt>Hunting</RPGStats.Activity.Hunt>
+  <RPGStats.Activity.Mine>Mining</RPGStats.Activity.Mine>
+  <RPGStats.Activity.Construct>Construction</RPGStats.Activity.Construct>
+  <RPGStats.Activity.Cook>Cooking</RPGStats.Activity.Cook>
+  <RPGStats.Activity.Research>Research</RPGStats.Activity.Research>
+  <RPGStats.Activity.Medical>Medical</RPGStats.Activity.Medical>
+  <RPGStats.Activity.Social>Social</RPGStats.Activity.Social>
+  <RPGStats.Activity.Combat>Combat</RPGStats.Activity.Combat>
+  <RPGStats.Activity.Hauling>Hauling {0}</RPGStats.Activity.Hauling>
+  <RPGStats.Activity.Farming>Farming</RPGStats.Activity.Farming>
+  <RPGStats.Activity.Cleaning>Cleaning</RPGStats.Activity.Cleaning>
+  <RPGStats.Activity.Repairing>Repairing</RPGStats.Activity.Repairing>
+  <RPGStats.Activity.Rescuing>Rescuing</RPGStats.Activity.Rescuing>
+  <RPGStats.Activity.Capturing>Capturing</RPGStats.Activity.Capturing>
+  <RPGStats.Activity.Stripping>Stripping</RPGStats.Activity.Stripping>
+  <RPGStats.Activity.Equipping>Equipping</RPGStats.Activity.Equipping>
+  <RPGStats.Activity.Eating>Eating</RPGStats.Activity.Eating>
+  <RPGStats.Activity.Sleeping>Sleeping</RPGStats.Activity.Sleeping>
+  <RPGStats.Activity.Recreation>Recreation</RPGStats.Activity.Recreation>
+  <RPGStats.Activity.Working>Working</RPGStats.Activity.Working>
+
+  <!-- Tooltips -->
+  <RPGStats.Tooltip.CurrentBonuses>Current Bonuses:</RPGStats.Tooltip.CurrentBonuses>
+  <RPGStats.Tooltip.NoBonuses>No bonuses</RPGStats.Tooltip.NoBonuses>
+  <RPGStats.Tooltip.PossibleImprovements>Possible Improvements:</RPGStats.Tooltip.PossibleImprovements>
+  <RPGStats.Tooltip.PerLevel>per level</RPGStats.Tooltip.PerLevel>
+  <RPGStats.Tooltip.StatImprovements>{0} improves:\n{1}</RPGStats.Tooltip.StatImprovements>
+  <RPGStats.Tooltip.NoImprovements>No improvements available</RPGStats.Tooltip.NoImprovements>
+
+  <!-- Rankings -->
+  <RPGStats.Ranking.First>1st (Highest)</RPGStats.Ranking.First>
+  <RPGStats.Ranking.Second>2nd</RPGStats.Ranking.Second>
+  <RPGStats.Ranking.Third>3rd</RPGStats.Ranking.Third>
+  <RPGStats.Ranking.Fourth>4th</RPGStats.Ranking.Fourth>
+  <RPGStats.Ranking.Fifth>5th</RPGStats.Ranking.Fifth>
+  <RPGStats.Ranking.Sixth>6th (Lowest)</RPGStats.Ranking.Sixth>
+  <RPGStats.Ranking.Other>{0}th</RPGStats.Ranking.Other>
+</LanguageData>

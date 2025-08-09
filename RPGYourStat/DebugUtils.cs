@@ -16,19 +16,17 @@ namespace RPGYourStat
             }
         }
 
-        // Nouvelle méthode pour les messages de level up (toujours affichés)
+        // CORRIGÉ : Garder l'ancienne méthode pour la compatibilité
         public static void LogLevelUp(string message)
         {
             Log.Message($"[RPGYourStat] {message}");
         }
 
-        // SUPPRIMÉ : Les commandes de debug qui causaient des erreurs de compilation
-        // Ces méthodes peuvent être appelées manuellement si nécessaire
-
-        // Méthode pour afficher le rapport d'équilibrage (accessible via les paramètres du mod)
-        public static string GetBalanceReportString()
+        // NOUVEAU : Méthode avec traduction
+        public static void LogLevelUp(string pawnName, string statName, int newLevel)
         {
-            return EnemyStatsBalancer.GetBalanceReport();
+            string message = TranslationHelper.GetLevelUpMessage(pawnName, statName, newLevel);
+            Log.Message($"[RPGYourStat] {message}");
         }
 
         // Méthode pour forcer l'équilibrage des ennemis (peut être appelée manuellement)
@@ -47,7 +45,8 @@ namespace RPGYourStat
                     EnemyStatsBalancer.BalanceNewPawnStats(enemy);
                 }
                 
-                Messages.Message($"Équilibrage forcé pour {enemies.Count} ennemis", MessageTypeDefOf.PositiveEvent);
+                string message = TranslationHelper.GetMessageText("ForceBalanceSuccess").Translate(enemies.Count);
+                Messages.Message(message, MessageTypeDefOf.PositiveEvent);
                 LogMessage($"Équilibrage forcé effectué pour {enemies.Count} ennemis");
             }
             catch (System.Exception ex)
