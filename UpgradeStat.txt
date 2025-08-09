@@ -32,12 +32,12 @@ AGL
     WorkSpeedGlobal          // Rapidité d'exécution des tâches
     ManipulationCapacity     // Coordination rapide
     RestRateMultiplier       // Récupération plus rapide du repos
-    MentalBreakThreshold     // Résistance au stress (réflexes mentaux)
     PlantHarvestYield        // Agilité pour récolter efficacement
     FilthRate                // Moins de saleté grâce à l'agilité
     EatingSpeed              // Mange plus rapidement
     RoomCleaningSpeed        // Nettoyage rapide
     HaulingSpeed             // Transport rapide d'objets
+    
 
 CON
     CarryingCapacity
@@ -80,3 +80,4 @@ CHA
     WildManTameChance        // Apprivoiser les sauvages
     ConvertOthersChance      // Convertir à l'idéologie (si DLC)
     LeadershipBonus          // Bonus de commandement
+    MentalBreakThreshold     // Résistance au stress

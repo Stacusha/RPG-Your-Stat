@@ -35,16 +35,7 @@ namespace RPGYourStat
             Widgets.Label(headerRect, "Statistiques RPG des Colons et Animaux");
             Text.Font = GameFont.Small;
 
-            // Bouton de test (temporaire)
-            Rect testButtonRect = new Rect(inRect.x + inRect.width - 150f, inRect.y, 140f, 30f);
-            if (Widgets.ButtonText(testButtonRect, "Test XP"))
-            {
-                foreach (var pawn in GetColonists())
-                {
-                    var comp = pawn.GetComp<CompRPGStats>();
-                    comp?.GiveTestExperience();
-                }
-            }
+            // SUPPRIMÉ : Bouton de test XP
 
             // Zone de contenu avec scroll
             Rect contentRect = new Rect(inRect.x, inRect.y + 50f, inRect.width, inRect.height - 50f);
@@ -118,17 +109,62 @@ namespace RPGYourStat
             Widgets.Label(nameRect, "Nom");
             currentX += NameColumnWidth + 10f;
             
-            // En-têtes des statistiques
+            // En-têtes des statistiques avec tooltips des améliorations
             foreach (StatType statType in System.Enum.GetValues(typeof(StatType)))
             {
                 Rect statRect = new Rect(currentX, y, StatColumnWidth, RowHeight);
                 Widgets.Label(statRect, CompRPGStats.GetStatDisplayName(statType));
+                
+                // Tooltip pour afficher les améliorations de cette stat
+                if (Mouse.IsOver(statRect))
+                {
+                    string improvementsTooltip = GetStatImprovementsTooltip(statType);
+                    TooltipHandler.TipRegion(statRect, improvementsTooltip);
+                }
+                
                 currentX += StatColumnWidth + 5f;
             }
             
             GUI.color = Color.white;
             
             return y + RowHeight;
+        }
+
+        // Obtenir le tooltip des améliorations pour une stat
+        private string GetStatImprovementsTooltip(StatType statType)
+        {
+            var affectedStats = StatModifierSystem.GetAffectedStats(statType);
+            
+            if (!affectedStats.Any())
+            {
+                return $"{CompRPGStats.GetStatDisplayName(statType)}\n\nAucune amélioration définie.";
+            }
+
+            var tooltip = new System.Text.StringBuilder();
+            tooltip.AppendLine($"=== {CompRPGStats.GetStatDisplayName(statType)} ===");
+            tooltip.AppendLine();
+            tooltip.AppendLine("Cette stat améliore :");
+            tooltip.AppendLine();
+
+            // Obtenir les bonus par niveau pour cette stat
+            var bonusMapping = StatModifierSystem.GetStatBonusMapping(statType);
+            
+            foreach (var statDef in affectedStats.OrderBy(s => s.label))
+            {
+                if (bonusMapping.ContainsKey(statDef))
+                {
+                    float bonusPerLevel = bonusMapping[statDef];
+                    string sign = bonusPerLevel >= 0 ? "+" : "";
+                    string percentage = (bonusPerLevel * 100f).ToString("F1");
+                    
+                    tooltip.AppendLine($"• {statDef.label}: {sign}{percentage}% par niveau");
+                }
+            }
+
+            tooltip.AppendLine();
+            tooltip.AppendLine("Les bonus sont appliqués automatiquement selon vos niveaux RPG.");
+
+            return tooltip.ToString().TrimEnd();
         }
 
         private float DrawPawnRow(Pawn pawn, float y, float width)
@@ -172,7 +208,7 @@ namespace RPGYourStat
                 if (stat != null)
                 {
                     int nextLevelExp = stats.GetRequiredExperienceForLevel(stat.level + 1);
-                    string statText = $"Niv.{stat.level}\n({stat.experience}/{nextLevelExp})";
+                    string statText = $"Niv.{stat.level}\n({stat.experience:F1}/{nextLevelExp})";
                     
                     // Utiliser la couleur basée sur le classement
                     GUI.color = GetColorByRanking(statRankings, statType);
@@ -180,16 +216,57 @@ namespace RPGYourStat
                     // Affichage avec tooltip
                     Widgets.Label(statRect, statText);
                     
-                    // MODIFIÉ : Tooltip simplifié
+                    // Tooltip avec détails du pawn ET améliorations
                     if (Mouse.IsOver(statRect))
                     {
                         float expNeeded = nextLevelExp - stat.experience;
                         string rankingInfo = GetRankingText(statRankings, statType);
-                        string tooltip = $"{CompRPGStats.GetStatDisplayName(statType)} {rankingInfo}\n" +
-                                       $"Niveau: {stat.level}\n" +
-                                       $"Expérience: {stat.experience:F1}/{nextLevelExp}\n" +
-                                       $"XP restante: {expNeeded:F1}";
-                        TooltipHandler.TipRegion(statRect, tooltip);
+                        
+                        var tooltip = new System.Text.StringBuilder();
+                        tooltip.AppendLine($"{CompRPGStats.GetStatDisplayName(statType)} {rankingInfo}");
+                        tooltip.AppendLine($"Niveau: {stat.level}");
+                        tooltip.AppendLine($"Expérience: {stat.experience:F1}/{nextLevelExp}");
+                        tooltip.AppendLine($"XP restante: {expNeeded:F1}");
+                        
+                        // Ajouter les bonus actuels de ce pawn
+                        if (stat.level > 1)
+                        {
+                            tooltip.AppendLine();
+                            tooltip.AppendLine("=== Bonus actuels ===");
+                            string currentBonuses = StatModifierSystem.GetStatBonusDescription(pawn, statType);
+                            if (!string.IsNullOrEmpty(currentBonuses) && currentBonuses != "Aucun bonus")
+                            {
+                                tooltip.AppendLine(currentBonuses);
+                            }
+                            else
+                            {
+                                tooltip.AppendLine("Aucun bonus actuel");
+                            }
+                        }
+                        
+                        // Ajouter les améliorations possibles
+                        tooltip.AppendLine();
+                        tooltip.AppendLine("=== Améliorations possibles ===");
+                        var affectedStats = StatModifierSystem.GetAffectedStats(statType);
+                        var bonusMapping = StatModifierSystem.GetStatBonusMapping(statType);
+                        
+                        foreach (var statDef in affectedStats.Take(5)) // Limiter à 5 pour éviter un tooltip trop long
+                        {
+                            if (bonusMapping.ContainsKey(statDef))
+                            {
+                                float bonusPerLevel = bonusMapping[statDef];
+                                string sign = bonusPerLevel >= 0 ? "+" : "";
+                                string percentage = (bonusPerLevel * 100f).ToString("F1");
+                                tooltip.AppendLine($"• {statDef.label}: {sign}{percentage}%/niv");
+                            }
+                        }
+                        
+                        if (affectedStats.Count > 5)
+                        {
+                            tooltip.AppendLine($"... et {affectedStats.Count - 5} autres améliorations");
+                        }
+                        
+                        TooltipHandler.TipRegion(statRect, tooltip.ToString().TrimEnd());
                     }
                 }
                 else
@@ -333,25 +410,14 @@ namespace RPGYourStat
             var animals = GetAnimals();
             
             float height = 0f;
-            
-            // Section colons
-            height += 35f; // Titre
-            height += RowHeight + 5f; // En-têtes + ligne
-            height += colonists.Count * RowHeight + 10f; // Données + espacement
-            
-            // Séparateur
+            height += 35f + RowHeight + 5f + colonists.Count * RowHeight + 10f;
             height += 40f;
+            height += 35f + RowHeight + 5f + animals.Count * RowHeight + 10f;
             
-            // Section animaux
-            height += 35f; // Titre
-            height += RowHeight + 5f; // En-têtes + ligne
-            height += animals.Count * RowHeight + 10f; // Données + espacement
-            
-            // Si pas de données, ajouter de l'espace pour les messages "Aucun..."
             if (!colonists.Any()) height += RowHeight;
             if (!animals.Any()) height += RowHeight;
             
-            return height + 50f; // Marge de sécurité
+            return height + 50f;
         }
     }
 }
