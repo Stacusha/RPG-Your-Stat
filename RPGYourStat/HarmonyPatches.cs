@@ -3,6 +3,9 @@ using RimWorld;
 using Verse;
 using System.Reflection;
 using Verse.AI;
+using System; // AJOUTÉ : Pour Type
+using System.Linq; // AJOUTÉ : Pour les méthodes LINQ
+using System.Collections.Generic; // AJOUTÉ : Pour List<T>
 
 namespace RPGYourStat
 {
@@ -19,6 +22,35 @@ namespace RPGYourStat
             catch (System.Exception ex)
             {
                 Log.Error($"[RPGYourStat] Erreur lors de l'application des patches Harmony: {ex}");
+            }
+        }
+    }
+
+    // NOUVELLE CLASSE UTILITAIRE : Pour vérifier l'état du jeu
+    public static class GameStateChecker
+    {
+        // MÉTHODE PUBLIQUE : Vérifier si le jeu est complètement chargé
+        public static bool IsGameFullyLoaded()
+        {
+            try
+            {
+                // Vérifications multiples pour s'assurer que le jeu est complètement initialisé
+                if (Current.Game == null) return false;
+                if (Find.FactionManager == null) return false;
+                if (Find.World == null) return false;
+                if (Find.WorldGrid == null) return false;
+                
+                // Vérifier que la faction du joueur existe sans lever d'exception
+                var factionManager = Find.FactionManager;
+                if (factionManager.AllFactions == null) return false;
+                
+                // Chercher la faction du joueur dans la liste
+                var playerFaction = factionManager.AllFactions.FirstOrDefault(f => f != null && f.IsPlayer);
+                return playerFaction != null;
+            }
+            catch
+            {
+                return false;
             }
         }
     }
@@ -328,6 +360,216 @@ namespace RPGYourStat
                             }
                         }
                     }
+                }
+            }
+        }
+    }
+
+    // NOUVEAU : Patch pour équilibrer les stats des pawns qui apparaissent
+    [HarmonyPatch(typeof(PawnGenerator), "GeneratePawn", new Type[] { typeof(PawnGenerationRequest) })]
+    public static class PawnGenerator_GeneratePawn_Patch
+    {
+        public static void Postfix(Pawn __result, PawnGenerationRequest request)
+        {
+            // CORRIGÉ : Utiliser la classe utilitaire publique
+            if (!GameStateChecker.IsGameFullyLoaded()) return;
+            
+            try
+            {
+                if (__result?.Faction == null) return;
+                
+                // Maintenant on peut accéder à Faction.OfPlayer en sécurité
+                var playerFaction = Faction.OfPlayer;
+                if (playerFaction == null) return;
+                
+                // Ne pas traiter les colons du joueur
+                if (__result.Faction == playerFaction) return;
+                
+                // Vérifier si le pawn a un composant RPG (ajouté automatiquement)
+                var comp = __result.GetComp<CompRPGStats>();
+                if (comp == null) return;
+                
+                // Équilibrer les stats selon le type de pawn
+                EnemyStatsBalancer.BalanceNewPawnStats(__result);
+            }
+            catch (Exception ex)
+            {
+                // Log seulement si le jeu est chargé
+                if (GameStateChecker.IsGameFullyLoaded())
+                {
+                    DebugUtils.LogMessage($"Erreur dans PawnGenerator_GeneratePawn_Patch: {ex.Message}");
+                }
+            }
+        }
+    }
+
+    // NOUVEAU : Patch pour les pawns qui rejoignent via événements
+    [HarmonyPatch(typeof(Pawn), "SetFaction")]
+    public static class Pawn_SetFaction_Patch
+    {
+        public static void Postfix(Pawn __instance, Faction newFaction)
+        {
+            // CORRIGÉ : Utiliser la classe utilitaire publique
+            if (!GameStateChecker.IsGameFullyLoaded()) return;
+            
+            try
+            {
+                if (__instance?.Faction == null || newFaction == null) return;
+                
+                var playerFaction = Faction.OfPlayer;
+                if (playerFaction == null) return;
+                
+                // Si un pawn change de faction vers/depuis le joueur, rééquilibrer
+                if (newFaction == playerFaction || __instance.Faction == playerFaction)
+                {
+                    var comp = __instance.GetComp<CompRPGStats>();
+                    if (comp != null && newFaction != playerFaction)
+                    {
+                        EnemyStatsBalancer.BalanceNewPawnStats(__instance);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                if (GameStateChecker.IsGameFullyLoaded())
+                {
+                    DebugUtils.LogMessage($"Erreur dans Pawn_SetFaction_Patch: {ex.Message}");
+                }
+            }
+        }
+    }
+
+    // NOUVEAU : Patch pour les incidents qui génèrent des ennemis
+    [HarmonyPatch(typeof(IncidentWorker_RaidEnemy), "TryExecuteWorker")]
+    public static class IncidentWorker_RaidEnemy_TryExecuteWorker_Patch
+    {
+        public static void Postfix(bool __result, IncidentParms parms)
+        {
+            // CORRIGÉ : Utiliser la classe utilitaire publique
+            if (!GameStateChecker.IsGameFullyLoaded()) return;
+            
+            try
+            {
+                if (!__result) return;
+                
+                var playerFaction = Faction.OfPlayer;
+                if (playerFaction == null) return;
+                
+                // Laisser un petit délai pour que tous les pawns soient générés
+                LongEventHandler.QueueLongEvent(() =>
+                {
+                    BalanceRaidPawns(parms);
+                }, "Équilibrage des stats de raid", false, null);
+            }
+            catch (Exception ex)
+            {
+                if (GameStateChecker.IsGameFullyLoaded())
+                {
+                    DebugUtils.LogMessage($"Erreur dans IncidentWorker_RaidEnemy_TryExecuteWorker_Patch: {ex.Message}");
+                }
+            }
+        }
+        
+        private static void BalanceRaidPawns(IncidentParms parms)
+        {
+            try
+            {
+                // CORRIGÉ : Utiliser la classe utilitaire publique
+                if (!GameStateChecker.IsGameFullyLoaded()) return;
+                
+                var playerFaction = Faction.OfPlayer;
+                if (playerFaction == null) return;
+                
+                var map = parms.target as Map;
+                if (map == null) return;
+                
+                // CORRIGÉ : Trouver les pawns ennemis récemment ajoutés
+                var recentEnemies = map.mapPawns.AllPawns
+                    .Where(p => p.Faction != null && 
+                               p.Faction.HostileTo(playerFaction) &&
+                               p.GetComp<CompRPGStats>() != null)
+                    .ToList();
+                
+                foreach (var enemy in recentEnemies)
+                {
+                    EnemyStatsBalancer.BalanceNewPawnStats(enemy);
+                }
+                
+                DebugUtils.LogMessage($"Équilibrage effectué pour {recentEnemies.Count} ennemis de raid");
+            }
+            catch (Exception ex)
+            {
+                if (GameStateChecker.IsGameFullyLoaded())
+                {
+                    DebugUtils.LogMessage($"Erreur lors de l'équilibrage du raid: {ex.Message}");
+                }
+            }
+        }
+    }
+
+    // NOUVEAU : Patch pour les caravanes et événements d'alliés
+    [HarmonyPatch(typeof(IncidentWorker_TraderCaravanArrival), "TryExecuteWorker")]
+    public static class IncidentWorker_TraderCaravanArrival_TryExecuteWorker_Patch
+    {
+        public static void Postfix(bool __result, IncidentParms parms)
+        {
+            // CORRIGÉ : Utiliser la classe utilitaire publique
+            if (!GameStateChecker.IsGameFullyLoaded()) return;
+            
+            try
+            {
+                if (!__result) return;
+                
+                var playerFaction = Faction.OfPlayer;
+                if (playerFaction == null) return;
+                
+                LongEventHandler.QueueLongEvent(() =>
+                {
+                    BalanceTraderPawns(parms);
+                }, "Équilibrage des stats de caravane", false, null);
+            }
+            catch (Exception ex)
+            {
+                if (GameStateChecker.IsGameFullyLoaded())
+                {
+                    DebugUtils.LogMessage($"Erreur dans IncidentWorker_TraderCaravanArrival_TryExecuteWorker_Patch: {ex.Message}");
+                }
+            }
+        }
+        
+        private static void BalanceTraderPawns(IncidentParms parms)
+        {
+            try
+            {
+                // CORRIGÉ : Utiliser la classe utilitaire publique
+                if (!GameStateChecker.IsGameFullyLoaded()) return;
+                
+                var playerFaction = Faction.OfPlayer;
+                if (playerFaction == null) return;
+                
+                var map = parms.target as Map;
+                if (map == null) return;
+                
+                // CORRIGÉ : Trouver les pawns de caravane récemment ajoutés
+                var traders = map.mapPawns.AllPawns
+                    .Where(p => p.Faction != null && 
+                               p.Faction != playerFaction &&
+                               !p.Faction.HostileTo(playerFaction) &&
+                               p.GetComp<CompRPGStats>() != null)
+                    .ToList();
+                
+                foreach (var trader in traders)
+                {
+                    EnemyStatsBalancer.BalanceNewPawnStats(trader);
+                }
+                
+                DebugUtils.LogMessage($"Équilibrage effectué pour {traders.Count} membres de caravane");
+            }
+            catch (Exception ex)
+            {
+                if (GameStateChecker.IsGameFullyLoaded())
+                {
+                    DebugUtils.LogMessage($"Erreur lors de l'équilibrage de caravane: {ex.Message}");
                 }
             }
         }

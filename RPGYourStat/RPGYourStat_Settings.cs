@@ -15,6 +15,11 @@ namespace RPGYourStat
         // NOUVEAU : Paramètre pour activer/désactiver les stats RPG sur les animaux
         public bool enableAnimalRPGStats = true;
 
+        // NOUVEAU : Paramètres pour l'équilibrage automatique
+        public bool enableAutoBalance = true;
+        public float enemyBalanceMultiplier = 1.0f;
+        public float allyBalanceMultiplier = 1.0f;
+
         // Paramètres avancés pour les multiplicateurs de bonus
         public Dictionary<string, float> statMultipliers = new Dictionary<string, float>();
 
@@ -29,6 +34,11 @@ namespace RPGYourStat
             
             // NOUVEAU : Sauvegarder le paramètre des animaux
             Scribe_Values.Look(ref enableAnimalRPGStats, "enableAnimalRPGStats", true);
+
+            // NOUVEAU : Sauvegarder les paramètres d'équilibrage
+            Scribe_Values.Look(ref enableAutoBalance, "enableAutoBalance", true);
+            Scribe_Values.Look(ref enemyBalanceMultiplier, "enemyBalanceMultiplier", 1.0f);
+            Scribe_Values.Look(ref allyBalanceMultiplier, "allyBalanceMultiplier", 1.0f);
 
             // Sauvegarder les multiplicateurs personnalisés
             Scribe_Collections.Look(ref statMultipliers, "statMultipliers", LookMode.Value, LookMode.Value);

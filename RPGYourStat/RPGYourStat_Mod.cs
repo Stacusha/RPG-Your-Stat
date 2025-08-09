@@ -92,11 +92,34 @@ namespace RPGYourStat
             }
 
             listing.Gap();
+            
+            // NOUVEAU : Paramètres d'équilibrage automatique
+            listing.CheckboxLabeled("Équilibrage automatique des ennemis/alliés", ref settings.enableAutoBalance,
+                "Les ennemis et alliés auront des stats équilibrées par rapport à votre colonie.");
+            
+            if (settings.enableAutoBalance)
+            {
+                listing.Gap();
+                listing.Label($"Multiplicateur force ennemis: {settings.enemyBalanceMultiplier:F1}");
+                settings.enemyBalanceMultiplier = listing.Slider(settings.enemyBalanceMultiplier, 0.5f, 2.0f);
+                
+                listing.Label($"Multiplicateur force alliés: {settings.allyBalanceMultiplier:F1}");
+                settings.allyBalanceMultiplier = listing.Slider(settings.allyBalanceMultiplier, 0.5f, 2.0f);
+            }
+
+            listing.Gap();
 
             // Bouton pour les paramètres avancés
             if (listing.ButtonTextLabeled("Paramètres avancés:", showAdvancedSettings ? "Masquer les coefficients" : "Afficher les coefficients"))
             {
                 showAdvancedSettings = !showAdvancedSettings;
+            }
+            
+            // NOUVEAU : Bouton pour afficher le rapport d'équilibrage
+            if (settings.enableAutoBalance && listing.ButtonText("Afficher rapport d'équilibrage"))
+            {
+                string report = EnemyStatsBalancer.GetBalanceReport();
+                Find.WindowStack.Add(new Dialog_MessageBox(report, "Fermer"));
             }
 
             listing.End();
@@ -105,7 +128,7 @@ namespace RPGYourStat
             if (showAdvancedSettings)
             {
                 // Calculer la zone pour les paramètres avancés
-                Rect advancedRect = new Rect(inRect.x, inRect.y + 240f, inRect.width, inRect.height - 240f);
+                Rect advancedRect = new Rect(inRect.x, inRect.y + 300f, inRect.width, inRect.height - 300f);
                 DrawAdvancedSettings(advancedRect);
             }
 
