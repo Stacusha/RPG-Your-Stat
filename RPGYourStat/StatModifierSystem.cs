@@ -167,25 +167,34 @@ namespace RPGYourStat
             var comp = pawn.GetComp<CompRPGStats>();
             if (comp == null) return 0f;
 
-            float totalModifier = 0f;
-
-            foreach (var statTypeMapping in StatBonusMapping)
+            // MODIFIÉ : Utiliser des système différents pour humains et animaux
+            if (pawn.RaceProps.Animal)
             {
-                StatType statType = statTypeMapping.Key;
-                var bonusMapping = statTypeMapping.Value;
-
-                if (bonusMapping.ContainsKey(stat))
-                {
-                    int level = comp.GetStatLevel(statType);
-                    string multiplierKey = bonusMapping[stat];
-                    
-                    float bonusPerLevel = GetMultiplierValue(multiplierKey);
-                    float statBonus = bonusPerLevel * (level - 1);
-                    totalModifier += statBonus;
-                }
+                return AnimalStatModifierSystem.GetAnimalStatModifier(pawn, stat);
             }
+            else
+            {
+                // Système original pour les humains
+                float totalModifier = 0f;
 
-            return totalModifier;
+                foreach (var statTypeMapping in StatBonusMapping)
+                {
+                    StatType statType = statTypeMapping.Key;
+                    var bonusMapping = statTypeMapping.Value;
+
+                    if (bonusMapping.ContainsKey(stat))
+                    {
+                        int level = comp.GetStatLevel(statType);
+                        string multiplierKey = bonusMapping[stat];
+                        
+                        float bonusPerLevel = GetMultiplierValue(multiplierKey);
+                        float statBonus = bonusPerLevel * (level - 1);
+                        totalModifier += statBonus;
+                    }
+                }
+
+                return totalModifier;
+            }
         }
 
         private static float GetMultiplierValue(string key)
@@ -199,42 +208,53 @@ namespace RPGYourStat
             return DefaultValues.TryGetValue(key, out float defaultValue) ? defaultValue : 0f;
         }
 
+        // MODIFIÉ : Adapter la description des bonus selon le type de pawn
         public static string GetStatBonusDescription(Pawn pawn, StatType statType)
         {
-            var comp = pawn.GetComp<CompRPGStats>();
-            if (comp == null) return "";
-
-            int level = comp.GetStatLevel(statType);
-            if (level <= 1) return "Aucun bonus";
-
-            var bonuses = new List<string>();
-            
-            if (StatBonusMapping.ContainsKey(statType))
+            if (pawn.RaceProps.Animal)
             {
-                foreach (var bonus in StatBonusMapping[statType])
-                {
-                    StatDef statDef = bonus.Key;
-                    string multiplierKey = bonus.Value;
-                    float bonusPerLevel = GetMultiplierValue(multiplierKey);
-                    float totalBonus = bonusPerLevel * (level - 1);
-                    
-                    string sign = totalBonus >= 0 ? "+" : "";
-                    string percentage = (totalBonus * 100f).ToString("F1");
-                    
-                    bonuses.Add($"{statDef.label}: {sign}{percentage}%");
-                }
+                return AnimalStatModifierSystem.GetAnimalStatBonusDescription(pawn, statType);
             }
+            else
+            {
+                // Code original pour les humains
+                var comp = pawn.GetComp<CompRPGStats>();
+                if (comp == null) return "";
 
-            return string.Join("\n", bonuses);
+                int level = comp.GetStatLevel(statType);
+                if (level <= 1) return "Aucun bonus";
+
+                var bonuses = new List<string>();
+                
+                if (StatBonusMapping.ContainsKey(statType))
+                {
+                    foreach (var bonus in StatBonusMapping[statType])
+                    {
+                        StatDef statDef = bonus.Key;
+                        string multiplierKey = bonus.Value;
+                        float bonusPerLevel = GetMultiplierValue(multiplierKey);
+                        float totalBonus = bonusPerLevel * (level - 1);
+                        
+                        string sign = totalBonus >= 0 ? "+" : "";
+                        string percentage = (totalBonus * 100f).ToString("F1");
+                        
+                        bonuses.Add($"{statDef.label}: {sign}{percentage}%");
+                    }
+                }
+
+                return string.Join("\n", bonuses);
+            }
         }
 
         public static List<StatDef> GetAffectedStats(StatType statType)
         {
-            if (StatBonusMapping.ContainsKey(statType))
-            {
-                return StatBonusMapping[statType].Keys.ToList();
-            }
-            return new List<StatDef>();
+            // Cette méthode est utilisée dans l'interface, on peut montrer les deux
+            var humanStats = StatBonusMapping.ContainsKey(statType) ? StatBonusMapping[statType].Keys.ToList() : new List<StatDef>();
+            var animalStats = AnimalStatModifierSystem.GetAnimalAffectedStats(statType);
+            
+            // Combiner et dédupliquer
+            var allStats = humanStats.Union(animalStats).ToList();
+            return allStats;
         }
 
         public static Dictionary<StatDef, float> GetStatBonusMapping(StatType statType)
