@@ -126,8 +126,12 @@ namespace RPGYourStat
                         
                         if (__instance.pawn.RaceProps.Animal)
                         {
-                            // Expérience spéciale pour les animaux
-                            ExperienceManager.GiveAnimalHaulingExperience(__instance.pawn, weight);
+                            // NOUVEAU : Vérifier si les stats RPG sont activées pour les animaux
+                            if (RPGYourStat_Mod.settings?.enableAnimalRPGStats == true)
+                            {
+                                // Expérience spéciale pour les animaux
+                                ExperienceManager.GiveAnimalHaulingExperience(__instance.pawn, weight);
+                            }
                         }
                         else
                         {
@@ -152,6 +156,9 @@ namespace RPGYourStat
         {
             if (!__instance.RaceProps.Animal) return;
             if (RPGYourStat_Mod.settings?.enableWorkExperience != true) return;
+            
+            // NOUVEAU : Vérifier si les stats RPG sont activées pour les animaux
+            if (RPGYourStat_Mod.settings?.enableAnimalRPGStats != true) return;
             
             // Vérifier toutes les 250 ticks (environ 4 secondes)
             tickCounter++;
@@ -262,7 +269,8 @@ namespace RPGYourStat
         {
             if (__instance?.parent is Pawn animal && animal.RaceProps.Animal)
             {
-                if (RPGYourStat_Mod.settings?.enableWorkExperience == true)
+                if (RPGYourStat_Mod.settings?.enableWorkExperience == true && 
+                    RPGYourStat_Mod.settings?.enableAnimalRPGStats == true) // NOUVEAU : Vérification supplémentaire
                 {
                     // SIMPLIFIÉ : Donner une quantité d'XP fixe selon le type de composant
                     float baseExp = 25f; // XP de base pour la production

@@ -70,11 +70,30 @@ namespace RPGYourStat
             Text.Font = GameFont.Small;
             currentY += 35f;
             
+            // MODIFIÉ : Messages adaptés selon le contexte
             if (!pawns.Any())
             {
                 Rect noDataRect = new Rect(20f, currentY, width - 20f, RowHeight);
                 GUI.color = Color.gray;
-                Widgets.Label(noDataRect, "Aucun " + (title.ToLower() == "colons" ? "colon" : "animal") + " trouvé");
+                
+                string message;
+                if (title.ToLower().Contains("animaux"))
+                {
+                    if (RPGYourStat_Mod.settings?.enableAnimalRPGStats == true)
+                    {
+                        message = "Aucun animal trouvé";
+                    }
+                    else
+                    {
+                        message = "Stats RPG désactivées pour les animaux";
+                    }
+                }
+                else
+                {
+                    message = "Aucun colon trouvé";
+                }
+                
+                Widgets.Label(noDataRect, message);
                 GUI.color = Color.white;
                 currentY += RowHeight + 10f;
                 return currentY;
@@ -181,9 +200,19 @@ namespace RPGYourStat
             var stats = pawn.GetComp<CompRPGStats>();
             float currentX = 10f;
             
-            // Nom du pawn
+            // Nom du pawn avec indicateur du type
             Rect nameRect = new Rect(currentX, y, NameColumnWidth, RowHeight);
-            Widgets.Label(nameRect, pawn.Name?.ToStringShort ?? "Inconnu");
+            string pawnName = pawn.Name?.ToStringShort ?? "Inconnu";
+            
+            // NOUVEAU : Ajouter un indicateur pour les animaux
+            if (pawn.RaceProps.Animal)
+            {
+                GUI.color = new Color(0.8f, 0.8f, 1.0f); // Bleu clair pour les animaux
+                pawnName = $"[A] {pawnName}";
+            }
+            
+            Widgets.Label(nameRect, pawnName);
+            GUI.color = Color.white;
             currentX += NameColumnWidth + 10f;
             
             if (stats == null)
@@ -192,6 +221,16 @@ namespace RPGYourStat
                 Rect noStatsRect = new Rect(currentX, y, StatColumnWidth * 6f, RowHeight);
                 GUI.color = Color.red;
                 Widgets.Label(noStatsRect, "Composant RPG manquant");
+                GUI.color = Color.white;
+                return y + RowHeight;
+            }
+
+            // NOUVEAU : Vérifier si les stats sont activées pour ce type de pawn
+            if (pawn.RaceProps.Animal && RPGYourStat_Mod.settings?.enableAnimalRPGStats != true)
+            {
+                Rect disabledRect = new Rect(currentX, y, StatColumnWidth * 6f, RowHeight);
+                GUI.color = Color.yellow;
+                Widgets.Label(disabledRect, "Stats RPG désactivées pour les animaux");
                 GUI.color = Color.white;
                 return y + RowHeight;
             }
@@ -395,8 +434,16 @@ namespace RPGYourStat
         {
             try
             {
-                return Find.CurrentMap?.mapPawns?.PawnsInFaction(Faction.OfPlayer)
-                    ?.Where(p => p.RaceProps.Animal)?.ToList() ?? new List<Pawn>();
+                // MODIFIÉ : Ne retourner des animaux que si les stats RPG sont activées pour eux
+                if (RPGYourStat_Mod.settings?.enableAnimalRPGStats == true)
+                {
+                    return Find.CurrentMap?.mapPawns?.PawnsInFaction(Faction.OfPlayer)
+                        ?.Where(p => p.RaceProps.Animal)?.ToList() ?? new List<Pawn>();
+                }
+                else
+                {
+                    return new List<Pawn>();
+                }
             }
             catch
             {

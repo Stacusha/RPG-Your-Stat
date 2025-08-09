@@ -57,98 +57,6 @@ namespace RPGYourStat
                 settings.statMultipliers = new Dictionary<string, float>();
             }
             
-            // NOUVEAU : Vérifier et ajouter les nouvelles clés manquantes
-            var newMappings = new Dictionary<string, float>
-            {
-                // STR - FORCE
-                ["STR_WorkSpeedGlobal"] = 0.02f,
-                ["STR_ConstructionSpeed"] = 0.03f,
-                ["STR_MiningSpeed"] = 0.03f,
-                ["STR_MiningYield"] = 0.02f,
-                ["STR_ConstructSuccessChance"] = 0.01f,
-                ["STR_SmoothingSpeed"] = 0.03f,
-                ["STR_MeleeDamageFactor"] = 0.025f,
-                ["STR_CarryingCapacity"] = 0.05f,
-                ["STR_PlantWorkSpeed"] = 0.025f,
-                ["STR_DeepDrillingSpeed"] = 0.03f,
-                
-                // DEX - DEXTÉRITÉ
-                ["DEX_ShootingAccuracyPawn"] = 0.02f,
-                ["DEX_MeleeHitChance"] = 0.02f,
-                ["DEX_WorkSpeedGlobal"] = 0.02f,
-                ["DEX_MedicalTendSpeed"] = 0.025f,
-                ["DEX_MedicalTendQuality"] = 0.02f,
-                ["DEX_SurgerySuccessChanceFactor"] = 0.015f,
-                ["DEX_FoodPoisonChance"] = -0.01f,
-                
-                // AGL - AGILITÉ
-                ["AGL_MoveSpeed"] = 0.03f,
-                ["AGL_MeleeDodgeChance"] = 0.02f,
-                ["AGL_AimingDelayFactor"] = -0.015f,
-                ["AGL_HuntingStealth"] = 0.02f,
-                ["AGL_RestRateMultiplier"] = 0.02f,
-                ["AGL_PlantHarvestYield"] = 0.02f,
-                ["AGL_FilthRate"] = -0.03f,
-                ["AGL_EatingSpeed"] = 0.03f,
-                
-                // CON - CONSTITUTION
-                ["CON_CarryingCapacity"] = 0.03f,
-                ["CON_WorkSpeedGlobal"] = 0.015f,
-                ["CON_ImmunityGainSpeed"] = 0.03f,
-                ["CON_MentalBreakThreshold"] = -0.01f,
-                ["CON_RestRateMultiplier"] = 0.025f,
-                ["CON_ComfyTemperatureMin"] = -0.1f,
-                ["CON_ComfyTemperatureMax"] = 0.1f,
-                ["CON_ToxicResistance"] = 0.02f,
-                ["CON_FoodPoisonChance"] = -0.015f,
-                ["CON_PainShockThreshold"] = 0.03f,
-                
-                // INT - INTELLIGENCE
-                ["INT_ResearchSpeed"] = 0.04f,
-                ["INT_GlobalLearningFactor"] = 0.03f,
-                ["INT_MedicalTendQuality"] = 0.025f,
-                ["INT_MedicalSurgerySuccessChance"] = 0.02f,
-                ["INT_PlantWorkSpeed"] = 0.02f,
-                ["INT_TrapSpringChance"] = -0.02f,
-                ["INT_NegotiationAbility"] = 0.015f,
-                ["INT_PsychicSensitivity"] = 0.015f,
-                
-                // CHA - CHARISME
-                ["CHA_SocialImpact"] = 0.04f,
-                ["CHA_NegotiationAbility"] = 0.025f,
-                ["CHA_TradePriceImprovement"] = 0.02f,
-                ["CHA_TameAnimalChance"] = 0.03f,
-                ["CHA_TrainAnimalChance"] = 0.025f,
-                ["CHA_AnimalGatherYield"] = 0.02f,
-                ["CHA_Beauty"] = 0.02f,
-                ["CHA_ArrestSuccessChance"] = 0.02f,
-                ["CHA_MentalBreakThreshold"] = -0.015f
-            };
-
-            // Ajouter les nouvelles clés manquantes
-            foreach (var kvp in newMappings)
-            {
-                if (!settings.statMultipliers.ContainsKey(kvp.Key))
-                {
-                    settings.statMultipliers[kvp.Key] = kvp.Value;
-                }
-            }
-
-            // NOUVEAU : Supprimer les anciennes clés obsolètes
-            var obsoleteKeys = new List<string>();
-            foreach (var key in settings.statMultipliers.Keys.ToList())
-            {
-                if (!newMappings.ContainsKey(key))
-                {
-                    obsoleteKeys.Add(key);
-                }
-            }
-            
-            foreach (var key in obsoleteKeys)
-            {
-                settings.statMultipliers.Remove(key);
-            }
-
             Listing_Standard listing = new Listing_Standard();
             listing.Begin(inRect);
 
@@ -171,6 +79,19 @@ namespace RPGYourStat
                 "Les pawns gagnent de l'XP en interagissant socialement.");
 
             listing.Gap();
+            
+            // NOUVEAU : Paramètre pour les animaux avec callback pour mettre à jour les multiplicateurs
+            bool previousAnimalSetting = settings.enableAnimalRPGStats;
+            listing.CheckboxLabeled("Activer les stats RPG pour les animaux", ref settings.enableAnimalRPGStats,
+                "Les animaux peuvent gagner de l'XP et améliorer leurs statistiques.");
+            
+            // Si le paramètre a changé, mettre à jour les multiplicateurs
+            if (previousAnimalSetting != settings.enableAnimalRPGStats)
+            {
+                UpdateMultipliersForAnimalSetting();
+            }
+
+            listing.Gap();
 
             // Bouton pour les paramètres avancés
             if (listing.ButtonTextLabeled("Paramètres avancés:", showAdvancedSettings ? "Masquer les coefficients" : "Afficher les coefficients"))
@@ -184,11 +105,76 @@ namespace RPGYourStat
             if (showAdvancedSettings)
             {
                 // Calculer la zone pour les paramètres avancés
-                Rect advancedRect = new Rect(inRect.x, inRect.y + 200f, inRect.width, inRect.height - 200f);
+                Rect advancedRect = new Rect(inRect.x, inRect.y + 240f, inRect.width, inRect.height - 240f);
                 DrawAdvancedSettings(advancedRect);
             }
 
             base.DoSettingsWindowContents(inRect);
+        }
+
+        // NOUVELLE MÉTHODE : Mettre à jour les multiplicateurs selon le paramètre des animaux
+        private void UpdateMultipliersForAnimalSetting()
+        {
+            if (settings.enableAnimalRPGStats)
+            {
+                // Ajouter les multiplicateurs des animaux
+                var animalMappings = new Dictionary<string, float>
+                {
+                    // Multiplicateurs pour animaux (comme défini dans AnimalStatModifierSystem)
+                    ["ANIMAL_STR_CarryingCapacity"] = 0.08f,
+                    ["ANIMAL_STR_MeleeDamageFactor"] = 0.04f,
+                    ["ANIMAL_STR_WorkSpeedGlobal"] = 0.03f,
+                    ["ANIMAL_STR_MiningSpeed"] = 0.05f,
+                    ["ANIMAL_STR_MiningYield"] = 0.03f,
+                    
+                    ["ANIMAL_DEX_MeleeHitChance"] = 0.03f,
+                    ["ANIMAL_DEX_ShootingAccuracyPawn"] = 0.015f,
+                    ["ANIMAL_DEX_WorkSpeedGlobal"] = 0.025f,
+                    
+                    ["ANIMAL_AGL_MoveSpeed"] = 0.05f,
+                    ["ANIMAL_AGL_MeleeDodgeChance"] = 0.04f,
+                    ["ANIMAL_AGL_HuntingStealth"] = 0.04f,
+                    ["ANIMAL_AGL_AimingDelayFactor"] = -0.025f,
+                    ["ANIMAL_AGL_FilthRate"] = -0.04f,
+                    
+                    ["ANIMAL_CON_ImmunityGainSpeed"] = 0.05f,
+                    ["ANIMAL_CON_RestRateMultiplier"] = 0.04f,
+                    ["ANIMAL_CON_ComfyTemperatureMin"] = -0.15f,
+                    ["ANIMAL_CON_ComfyTemperatureMax"] = 0.15f,
+                    ["ANIMAL_CON_ToxicResistance"] = 0.03f,
+                    ["ANIMAL_CON_PainShockThreshold"] = 0.05f,
+                    ["ANIMAL_CON_FoodPoisonChance"] = -0.02f,
+                    ["ANIMAL_CON_CarryingCapacity"] = 0.04f,
+                    
+                    ["ANIMAL_INT_GlobalLearningFactor"] = 0.02f,
+                    ["ANIMAL_INT_TrapSpringChance"] = -0.015f,
+                    ["ANIMAL_INT_HuntingStealth"] = 0.025f,
+                    ["ANIMAL_INT_WorkSpeedGlobal"] = 0.015f,
+                    
+                    ["ANIMAL_CHA_SocialImpact"] = 0.03f,
+                    ["ANIMAL_CHA_TameAnimalChance"] = 0.04f,
+                    ["ANIMAL_CHA_TrainAnimalChance"] = 0.035f,
+                    ["ANIMAL_CHA_Beauty"] = 0.03f,
+                    ["ANIMAL_CHA_AnimalGatherYield"] = 0.04f
+                };
+
+                foreach (var kvp in animalMappings)
+                {
+                    if (!settings.statMultipliers.ContainsKey(kvp.Key))
+                    {
+                        settings.statMultipliers[kvp.Key] = kvp.Value;
+                    }
+                }
+            }
+            else
+            {
+                // Supprimer les multiplicateurs des animaux
+                var animalKeys = settings.statMultipliers.Keys.Where(k => k.StartsWith("ANIMAL_")).ToList();
+                foreach (var key in animalKeys)
+                {
+                    settings.statMultipliers.Remove(key);
+                }
+            }
         }
 
         private void DrawAdvancedSettings(Rect inRect)
@@ -212,33 +198,66 @@ namespace RPGYourStat
             
             float currentY = 0f;
             
-            // Grouper par stat RPG
-            var statGroups = new[]
+            // Grouper par type (humains puis animaux si activés)
+            var humanStatGroups = new[]
             {
-                new { Type = "STR", Name = "FORCE", Color = new Color(1.0f, 0.5f, 0.5f) },
-                new { Type = "DEX", Name = "DEXTÉRITÉ", Color = new Color(0.5f, 1.0f, 0.5f) },
-                new { Type = "AGL", Name = "AGILITÉ", Color = new Color(0.5f, 0.5f, 1.0f) },
-                new { Type = "CON", Name = "CONSTITUTION", Color = new Color(1.0f, 0.8f, 0.3f) },
-                new { Type = "INT", Name = "INTELLIGENCE", Color = new Color(0.8f, 0.3f, 1.0f) },
-                new { Type = "CHA", Name = "CHARISME", Color = new Color(1.0f, 0.3f, 0.8f) }
+                new { Type = "STR", Name = "FORCE (Humains)", Color = new Color(1.0f, 0.5f, 0.5f), Prefix = "" },
+                new { Type = "DEX", Name = "DEXTÉRITÉ (Humains)", Color = new Color(0.5f, 1.0f, 0.5f), Prefix = "" },
+                new { Type = "AGL", Name = "AGILITÉ (Humains)", Color = new Color(0.5f, 0.5f, 1.0f), Prefix = "" },
+                new { Type = "CON", Name = "CONSTITUTION (Humains)", Color = new Color(1.0f, 0.8f, 0.3f), Prefix = "" },
+                new { Type = "INT", Name = "INTELLIGENCE (Humains)", Color = new Color(0.8f, 0.3f, 1.0f), Prefix = "" },
+                new { Type = "CHA", Name = "CHARISME (Humains)", Color = new Color(1.0f, 0.3f, 0.8f), Prefix = "" }
             };
-            
-            for (int i = 0; i < statGroups.Length; i++)
+
+            // Dessiner les stats des humains
+            for (int i = 0; i < humanStatGroups.Length; i++)
             {
-                var statGroup = statGroups[i];
-                
-                // En-tête de la stat avec couleur
-                Rect statHeaderRect = new Rect(0f, currentY, viewRect.width, 30f);
-                GUI.color = statGroup.Color;
+                var statGroup = humanStatGroups[i];
+                currentY = DrawStatGroupHeader(statGroup.Name, statGroup.Color, currentY, viewRect.width);
+                currentY = DrawStatMultipliers(statGroup.Type, currentY, viewRect.width);
+                currentY += 20f;
+            }
+
+            // NOUVEAU : Dessiner les stats des animaux si activées
+            if (settings.enableAnimalRPGStats)
+            {
+                var animalStatGroups = new[]
+                {
+                    new { Type = "ANIMAL_STR", Name = "FORCE (Animaux)", Color = new Color(1.0f, 0.3f, 0.3f), Prefix = "ANIMAL_" },
+                    new { Type = "ANIMAL_DEX", Name = "DEXTÉRITÉ (Animaux)", Color = new Color(0.3f, 1.0f, 0.3f), Prefix = "ANIMAL_" },
+                    new { Type = "ANIMAL_AGL", Name = "AGILITÉ (Animaux)", Color = new Color(0.3f, 0.3f, 1.0f), Prefix = "ANIMAL_" },
+                    new { Type = "ANIMAL_CON", Name = "CONSTITUTION (Animaux)", Color = new Color(1.0f, 0.6f, 0.1f), Prefix = "ANIMAL_" },
+                    new { Type = "ANIMAL_INT", Name = "INTELLIGENCE (Animaux)", Color = new Color(0.6f, 0.1f, 1.0f), Prefix = "ANIMAL_" },
+                    new { Type = "ANIMAL_CHA", Name = "CHARISME (Animaux)", Color = new Color(1.0f, 0.1f, 0.6f), Prefix = "ANIMAL_" }
+                };
+
+                // Séparateur
+                currentY += 20f;
+                Rect separatorRect = new Rect(viewRect.width * 0.1f, currentY, viewRect.width * 0.8f, 2f);
+                GUI.color = Color.gray;
+                Widgets.DrawBoxSolid(separatorRect, GUI.color);
+                GUI.color = Color.white;
+                currentY += 30f;
+
+                for (int i = 0; i < animalStatGroups.Length; i++)
+                {
+                    var statGroup = animalStatGroups[i];
+                    currentY = DrawStatGroupHeader(statGroup.Name, statGroup.Color, currentY, viewRect.width);
+                    currentY = DrawStatMultipliers(statGroup.Type, currentY, viewRect.width);
+                    currentY += 20f;
+                }
+            }
+            else
+            {
+                // Afficher un message si les stats des animaux sont désactivées
+                currentY += 20f;
+                Rect disabledRect = new Rect(20f, currentY, viewRect.width - 40f, 30f);
+                GUI.color = Color.gray;
                 Text.Font = GameFont.Medium;
-                Widgets.Label(statHeaderRect, $"=== {statGroup.Name} ===");
+                Widgets.Label(disabledRect, "=== STATS ANIMAUX DÉSACTIVÉES ===");
                 GUI.color = Color.white;
                 Text.Font = GameFont.Small;
-                currentY += 35f;
-                
-                // Multiplicateurs pour cette stat
-                currentY = DrawStatMultipliers(statGroup.Type, currentY, viewRect.width);
-                currentY += 20f; // Espacement entre les sections
+                currentY += 50f;
             }
             
             Widgets.EndScrollView();
@@ -249,6 +268,18 @@ namespace RPGYourStat
             {
                 ResetToDefaults();
             }
+        }
+
+        // NOUVELLE MÉTHODE : Dessiner l'en-tête d'un groupe de stats
+        private float DrawStatGroupHeader(string title, Color color, float startY, float width)
+        {
+            Rect statHeaderRect = new Rect(0f, startY, width, 30f);
+            GUI.color = color;
+            Text.Font = GameFont.Medium;
+            Widgets.Label(statHeaderRect, $"=== {title} ===");
+            GUI.color = Color.white;
+            Text.Font = GameFont.Small;
+            return startY + 35f;
         }
 
         private float DrawStatMultipliers(string statType, float startY, float width)
@@ -364,9 +395,17 @@ namespace RPGYourStat
         {
             // Calculer la hauteur nécessaire pour tous les paramètres avancés
             int totalMultipliers = settings.statMultipliers?.Count ?? 0;
-            int statSections = 6; // STR, DEX, AGL, CON, INT, CHA
+            int humanSections = 6; // STR, DEX, AGL, CON, INT, CHA pour humains
+            int animalSections = settings.enableAnimalRPGStats ? 6 : 0; // Même chose pour animaux si activé
             
-            return (totalMultipliers * 28f) + (statSections * 55f) + 100f; // +100f pour les marges
+            float baseHeight = (totalMultipliers * 28f) + ((humanSections + animalSections) * 55f) + 200f;
+            
+            if (!settings.enableAnimalRPGStats)
+            {
+                baseHeight += 80f; // Espace pour le message "désactivé"
+            }
+            
+            return baseHeight;
         }
 
         private void ResetToDefaults()

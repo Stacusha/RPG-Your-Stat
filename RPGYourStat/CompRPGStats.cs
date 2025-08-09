@@ -209,8 +209,21 @@ namespace RPGYourStat
                 InitializeStats();
             }
 
-            var result = new System.Text.StringBuilder();
-            result.AppendLine("=== Statistiques RPG ===");
+            var lines = new System.Collections.Generic.List<string>();
+            
+            // NOUVEAU : Afficher l'activité actuelle en premier si c'est un pawn
+            if (parent is Pawn pawn)
+            {
+                string currentActivity = GetCurrentActivity(pawn);
+                if (!string.IsNullOrEmpty(currentActivity))
+                {
+                    lines.Add("=== ACTIVITÉ ACTUELLE ===");
+                    lines.Add(currentActivity);
+                }
+            }
+            
+            // Ajouter les statistiques RPG
+            lines.Add("=== Statistiques RPG ===");
             
             foreach (StatType statType in System.Enum.GetValues(typeof(StatType)))
             {
@@ -221,11 +234,12 @@ namespace RPGYourStat
                     int nextLevelExp = GetRequiredExperienceForLevel(stat.level + 1);
                     
                     // MODIFIÉ : Affichage simplifié sans les bonus
-                    result.AppendLine($"{GetStatDisplayName(statType)}: Niv.{stat.level} ({stat.experience:F1}/{nextLevelExp} XP)");
+                    lines.Add($"{GetStatDisplayName(statType)}: Niv.{stat.level} ({stat.experience:F1}/{nextLevelExp} XP)");
                 }
             }
             
-            return result.ToString().TrimEnd();
+            // Joindre toutes les lignes sans lignes vides
+            return string.Join("\n", lines);
         }
 
         // Ajouter cette méthode pour tester le gain d'expérience
@@ -236,6 +250,205 @@ namespace RPGYourStat
             {
                 AddExperience(statType, UnityEngine.Random.Range(100f, 500f));
             }
+        }
+
+        // NOUVELLE MÉTHODE : Détecter l'activité actuelle du pawn
+        private string GetCurrentActivity(Pawn pawn)
+        {
+            try
+            {
+                if (pawn?.CurJob?.def == null)
+                {
+                    if (pawn?.mindState?.IsIdle == true)
+                        return "🏃 Inactif";
+                    return "🤔 Activité inconnue";
+                }
+
+                var jobDef = pawn.CurJob.def;
+                string jobDefName = jobDef.defName;
+                
+                // NOUVEAU : Détection des activités avec icônes et descriptions
+                return jobDefName switch
+                {
+                    // === TRAVAIL ET CONSTRUCTION ===
+                    var job when job.Contains("Construct") => "🔨 Construction",
+                    var job when job.Contains("Build") => "🔧 Construction",
+                    var job when job.Contains("Repair") => "🔧 Réparation",
+                    var job when job.Contains("Mine") => "⛏️ Minage",
+                    var job when job.Contains("Smooth") => "🏗️ Lissage",
+                    var job when job.Contains("CleanFilth") => "🧹 Nettoyage",
+                    
+                    // === AGRICULTURE ===
+                    var job when job.Contains("Plant") => "🌱 Plantation",
+                    var job when job.Contains("Harvest") => "🌾 Récolte",
+                    var job when job.Contains("Cut") => "🪓 Coupage",
+                    var job when job.Contains("Sow") => "🌱 Semence",
+                    
+                    // === COMBAT ET CHASSE ===
+                    var job when job.Contains("Hunt") => "🏹 Chasse",
+                    var job when job.Contains("Attack") => "⚔️ Combat",
+                    var job when job.Contains("Fight") => "⚔️ Combat",
+                    var job when job.Contains("Flee") => "🏃 Fuite",
+                    
+                    // === SOINS MÉDICAUX ===
+                    var job when job.Contains("TendPatient") => "🏥 Soins médicaux",
+                    var job when job.Contains("Surgery") => "🔬 Chirurgie",
+                    var job when job.Contains("Rescue") => "🚑 Sauvetage",
+                    
+                    // === TRANSPORT ===
+                    var job when job.Contains("Haul") => GetHaulingDescription(pawn),
+                    var job when job.Contains("Carry") => "📦 Transport",
+                    var job when job.Contains("TakeInventory") => "📦 Collecte",
+                    
+                    // === CRAFTING ET CUISINE ===
+                    var job when job.Contains("Cook") => "🍳 Cuisine",
+                    var job when job.Contains("DoBill") => GetCraftingDescription(pawn),
+                    var job when job.Contains("Make") => "🔨 Fabrication",
+                    
+                    // === SOCIAL ===
+                    var job when job.Contains("Social") => "💬 Interaction sociale",
+                    var job when job.Contains("Chat") => "💬 Discussion",
+                    var job when job.Contains("Recruit") => "🤝 Recrutement",
+                    
+                    // === ANIMAUX SPÉCIFIQUES ===
+                    var job when job.Contains("Train") => GetTrainingDescription(pawn),
+                    var job when job.Contains("Tame") => "🐕 Apprivoisement",
+                    var job when job.Contains("Milk") => "🥛 Traite",
+                    var job when job.Contains("Shear") => "✂️ Tonte",
+                    
+                    // === GARDE ET SÉCURITÉ ===
+                    var job when job.Contains("Guard") => "🛡️ Garde",
+                    var job when job.Contains("Wait") && jobDefName.Contains("Combat") => "⚔️ En position de combat",
+                    
+                    // === RECHERCHE ET ÉTUDE ===
+                    var job when job.Contains("Research") => "🔬 Recherche",
+                    var job when job.Contains("Study") => "📚 Étude",
+                    
+                    // === DIVERTISSEMENT ET REPOS ===
+                    var job when job.Contains("Joy") => "🎉 Divertissement",
+                    var job when job.Contains("Sleep") => "😴 Sommeil",
+                    var job when job.Contains("Rest") => "🛏️ Repos",
+                    var job when job.Contains("Meditate") => "🧘 Méditation",
+                    
+                    // === BESOINS BASIQUES ===
+                    var job when job.Contains("Ingest") => "🍽️ Alimentation",
+                    var job when job.Contains("Eat") => "🍽️ Alimentation",
+                    
+                    // === ACTIVITÉS SPÉCIALES ===
+                    var job when job.Contains("Warden") => "🔒 Gardiennage",
+                    var job when job.Contains("Trade") => "💰 Commerce",
+                    var job when job.Contains("Lovin") => "💕 Romance",
+                    
+                    // === DÉPLACEMENT ===
+                    var job when job.Contains("Goto") => "🚶 Déplacement",
+                    var job when job.Contains("Follow") => "👥 Suivre",
+                    
+                    // Par défaut
+                    _ => $"🔄 {GetFriendlyJobName(jobDefName)}"
+                };
+            }
+            catch (System.Exception ex)
+            {
+                DebugUtils.LogMessage($"Erreur lors de la détection d'activité: {ex.Message}");
+                return "❓ Erreur de détection";
+            }
+        }
+
+        // NOUVELLE MÉTHODE : Description détaillée pour le transport
+        private string GetHaulingDescription(Pawn pawn)
+        {
+            try
+            {
+                if (pawn?.CurJob?.targetA.Thing != null)
+                {
+                    var item = pawn.CurJob.targetA.Thing;
+                    float weight = item.GetStatValue(StatDefOf.Mass);
+                    return $"📦 Transport de {item.def.label} ({weight:F1}kg)";
+                }
+                return "📦 Transport";
+            }
+            catch
+            {
+                return "📦 Transport";
+            }
+        }
+
+        // NOUVELLE MÉTHODE : Description détaillée pour le crafting
+        private string GetCraftingDescription(Pawn pawn)
+        {
+            try
+            {
+                // Essayer de détecter le type de fabrication selon la position
+                if (pawn?.CurJob?.targetA.Thing != null)
+                {
+                    var workbench = pawn.CurJob.targetA.Thing;
+                    string workbenchName = workbench.def.defName.ToLower();
+                    
+                    return workbenchName switch
+                    {
+                        var name when name.Contains("stove") => "🍳 Cuisine",
+                        var name when name.Contains("smithy") => "🔨 Forge",
+                        var name when name.Contains("tailor") => "🧵 Couture",
+                        var name when name.Contains("craft") => "🔧 Artisanat",
+                        var name when name.Contains("drug") => "💊 Pharmacie",
+                        var name when name.Contains("art") => "🎨 Art",
+                        _ => "🔨 Fabrication"
+                    };
+                }
+                return "🔨 Fabrication";
+            }
+            catch
+            {
+                return "🔨 Fabrication";
+            }
+        }
+
+        // NOUVELLE MÉTHODE : Description détaillée pour le dressage
+        private string GetTrainingDescription(Pawn pawn)
+        {
+            try
+            {
+                if (pawn?.CurJob?.targetA.Pawn != null)
+                {
+                    var animal = pawn.CurJob.targetA.Pawn;
+                    return $"🎓 Dresse {animal.Name?.ToStringShort ?? "animal"}";
+                }
+                return "🎓 Dressage";
+            }
+            catch
+            {
+                return "🎓 Dressage";
+            }
+        }
+
+        // NOUVELLE MÉTHODE : Convertir les noms de jobs en français
+        private string GetFriendlyJobName(string jobDefName)
+        {
+            return jobDefName switch
+            {
+                "Wait" => "Attendre",
+                "Wait_Downed" => "Inconscient",
+                "Wait_MaintainPosture" => "Maintenir position",
+                "GotoWander" => "Déambulation",
+                "GotoSafeTemperature" => "Chercher température sûre",
+                "LayDown" => "Se coucher",
+                "Standby" => "En attente",
+                "FleeAndCower" => "Fuite et protection",
+                "ManTurret" => "Opérer tourelle",
+                "BeatFire" => "Éteindre feu",
+                "ExtinguishSelf" => "S'éteindre",
+                "Vomit" => "Vomir",
+                "Job_Stumble" => "Tituber",
+                "Strip" => "Déshabiller",
+                "Wear" => "S'habiller",
+                "RemoveApparel" => "Enlever vêtement",
+                "DropEquipment" => "Lâcher équipement",
+                "Equip" => "Équiper",
+                "UnloadInventory" => "Vider inventaire",
+                "TakeFromInventory" => "Prendre inventaire",
+                "UseVerbOnThing" => "Utiliser objet",
+                _ => jobDefName // Utiliser le nom original si pas de traduction
+            };
         }
     }
 

@@ -11,6 +11,9 @@ namespace RPGYourStat
         public bool enableCombatExperience = true;
         public bool enableWorkExperience = true;
         public bool enableSocialExperience = true;
+        
+        // NOUVEAU : Paramètre pour activer/désactiver les stats RPG sur les animaux
+        public bool enableAnimalRPGStats = true;
 
         // Paramètres avancés pour les multiplicateurs de bonus
         public Dictionary<string, float> statMultipliers = new Dictionary<string, float>();
@@ -23,6 +26,9 @@ namespace RPGYourStat
             Scribe_Values.Look(ref enableCombatExperience, "enableCombatExperience", true);
             Scribe_Values.Look(ref enableWorkExperience, "enableWorkExperience", true);
             Scribe_Values.Look(ref enableSocialExperience, "enableSocialExperience", true);
+            
+            // NOUVEAU : Sauvegarder le paramètre des animaux
+            Scribe_Values.Look(ref enableAnimalRPGStats, "enableAnimalRPGStats", true);
 
             // Sauvegarder les multiplicateurs personnalisés
             Scribe_Collections.Look(ref statMultipliers, "statMultipliers", LookMode.Value, LookMode.Value);
@@ -70,7 +76,7 @@ namespace RPGYourStat
         // MODIFIÉ : Méthode pour obtenir les mappings par défaut avec les stats existantes
         private Dictionary<string, float> GetDefaultMappings()
         {
-            return new Dictionary<string, float>
+            var mappings = new Dictionary<string, float>
             {
                 // STR - FORCE : Travaux physiques, force brute, porter des charges
                 ["STR_WorkSpeedGlobal"] = 0.02f,              // Force dans tous les travaux
@@ -136,6 +142,62 @@ namespace RPGYourStat
                 ["CHA_ArrestSuccessChance"] = 0.02f,          // +2% par niveau (persuasion/autorité)
                 ["CHA_MentalBreakThreshold"] = -0.015f        // -1.5% par niveau (résistance au stress)
             };
+
+            // NOUVEAU : Ajouter les multiplicateurs des animaux si activés
+            if (enableAnimalRPGStats)
+            {
+                var animalMappings = new Dictionary<string, float>
+                {
+                    // STR - FORCE pour animaux
+                    ["ANIMAL_STR_CarryingCapacity"] = 0.08f,
+                    ["ANIMAL_STR_MeleeDamageFactor"] = 0.04f,
+                    ["ANIMAL_STR_WorkSpeedGlobal"] = 0.03f,
+                    ["ANIMAL_STR_MiningSpeed"] = 0.05f,
+                    ["ANIMAL_STR_MiningYield"] = 0.03f,
+                    
+                    // DEX - DEXTÉRITÉ pour animaux
+                    ["ANIMAL_DEX_MeleeHitChance"] = 0.03f,
+                    ["ANIMAL_DEX_ShootingAccuracyPawn"] = 0.015f,
+                    ["ANIMAL_DEX_WorkSpeedGlobal"] = 0.025f,
+                    
+                    // AGL - AGILITÉ pour animaux (leur point fort)
+                    ["ANIMAL_AGL_MoveSpeed"] = 0.05f,
+                    ["ANIMAL_AGL_MeleeDodgeChance"] = 0.04f,
+                    ["ANIMAL_AGL_HuntingStealth"] = 0.04f,
+                    ["ANIMAL_AGL_AimingDelayFactor"] = -0.025f,
+                    ["ANIMAL_AGL_FilthRate"] = -0.04f,
+                    
+                    // CON - CONSTITUTION pour animaux (leur autre point fort)
+                    ["ANIMAL_CON_ImmunityGainSpeed"] = 0.05f,
+                    ["ANIMAL_CON_RestRateMultiplier"] = 0.04f,
+                    ["ANIMAL_CON_ComfyTemperatureMin"] = -0.15f,
+                    ["ANIMAL_CON_ComfyTemperatureMax"] = 0.15f,
+                    ["ANIMAL_CON_ToxicResistance"] = 0.03f,
+                    ["ANIMAL_CON_PainShockThreshold"] = 0.05f,
+                    ["ANIMAL_CON_FoodPoisonChance"] = -0.02f,
+                    ["ANIMAL_CON_CarryingCapacity"] = 0.04f,
+                    
+                    // INT - INTELLIGENCE pour animaux (leur point faible)
+                    ["ANIMAL_INT_GlobalLearningFactor"] = 0.02f,
+                    ["ANIMAL_INT_TrapSpringChance"] = -0.015f,
+                    ["ANIMAL_INT_HuntingStealth"] = 0.025f,
+                    ["ANIMAL_INT_WorkSpeedGlobal"] = 0.015f,
+                    
+                    // CHA - CHARISME pour animaux
+                    ["ANIMAL_CHA_SocialImpact"] = 0.03f,
+                    ["ANIMAL_CHA_TameAnimalChance"] = 0.04f,
+                    ["ANIMAL_CHA_TrainAnimalChance"] = 0.035f,
+                    ["ANIMAL_CHA_Beauty"] = 0.03f,
+                    ["ANIMAL_CHA_AnimalGatherYield"] = 0.04f
+                };
+
+                foreach (var kvp in animalMappings)
+                {
+                    mappings[kvp.Key] = kvp.Value;
+                }
+            }
+
+            return mappings;
         }
 
         // MODIFIÉ : Méthode publique pour l'initialisation avec les nouvelles améliorations

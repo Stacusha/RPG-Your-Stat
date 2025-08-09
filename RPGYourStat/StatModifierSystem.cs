@@ -167,10 +167,17 @@ namespace RPGYourStat
             var comp = pawn.GetComp<CompRPGStats>();
             if (comp == null) return 0f;
 
-            // MODIFIÉ : Utiliser des système différents pour humains et animaux
+            // MODIFIÉ : Vérifier si les stats RPG sont activées pour les animaux
             if (pawn.RaceProps.Animal)
             {
-                return AnimalStatModifierSystem.GetAnimalStatModifier(pawn, stat);
+                if (RPGYourStat_Mod.settings?.enableAnimalRPGStats == true)
+                {
+                    return AnimalStatModifierSystem.GetAnimalStatModifier(pawn, stat);
+                }
+                else
+                {
+                    return 0f; // Pas de bonus pour les animaux si désactivé
+                }
             }
             else
             {
@@ -208,12 +215,19 @@ namespace RPGYourStat
             return DefaultValues.TryGetValue(key, out float defaultValue) ? defaultValue : 0f;
         }
 
-        // MODIFIÉ : Adapter la description des bonus selon le type de pawn
+        // MODIFIÉ : Adapter la description des bonus selon le type de pawn et les paramètres
         public static string GetStatBonusDescription(Pawn pawn, StatType statType)
         {
             if (pawn.RaceProps.Animal)
             {
-                return AnimalStatModifierSystem.GetAnimalStatBonusDescription(pawn, statType);
+                if (RPGYourStat_Mod.settings?.enableAnimalRPGStats == true)
+                {
+                    return AnimalStatModifierSystem.GetAnimalStatBonusDescription(pawn, statType);
+                }
+                else
+                {
+                    return "Stats RPG désactivées pour les animaux";
+                }
             }
             else
             {
@@ -248,9 +262,14 @@ namespace RPGYourStat
 
         public static List<StatDef> GetAffectedStats(StatType statType)
         {
-            // Cette méthode est utilisée dans l'interface, on peut montrer les deux
+            // Cette méthode est utilisée dans l'interface, on peut montrer les humains et animaux selon les paramètres
             var humanStats = StatBonusMapping.ContainsKey(statType) ? StatBonusMapping[statType].Keys.ToList() : new List<StatDef>();
-            var animalStats = AnimalStatModifierSystem.GetAnimalAffectedStats(statType);
+            
+            List<StatDef> animalStats = new List<StatDef>();
+            if (RPGYourStat_Mod.settings?.enableAnimalRPGStats == true)
+            {
+                animalStats = AnimalStatModifierSystem.GetAnimalAffectedStats(statType);
+            }
             
             // Combiner et dédupliquer
             var allStats = humanStats.Union(animalStats).ToList();
